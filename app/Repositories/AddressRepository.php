@@ -1,0 +1,20 @@
+<?php
+
+namespace App\Repositories;
+
+use App\Models\Address;
+
+class AddressRepository
+{
+    protected Address $address;
+
+    public function __construct(Address $address)
+    {
+        $this->address = $address;
+    }
+
+    public function create(array $data)
+    {
+        return $this->address->create($data);
+    }
+}
