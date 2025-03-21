@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\AddressService;
 use App\Services\UserService;
 use App\Services\ValidationService;
 use Exception;
@@ -12,13 +11,11 @@ class UserController extends Controller
 {
     protected ValidationService $validationService;
     protected UserService $userService;
-    protected AddressService $addressService;
 
-    public function __construct(ValidationService $validationService, UserService $userService, AddressService $addressService)
+    public function __construct(ValidationService $validationService, UserService $userService)
     {
         $this->validationService = $validationService;
         $this->userService = $userService;
-        $this->addressService = $addressService;
     }
 
     /**
@@ -51,9 +48,11 @@ class UserController extends Controller
                 return apiResponse(false, $validation, 'Invalid data', 5, 422);
             }
 
-            return $this->userService->login($request->all());
+            $response = $this->userService->login($request->all());
+
+            return apiResponse(true, $response);
         } catch (Exception $ex) {
-            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, $ex->getCode());
         }
     }
 
@@ -90,6 +89,17 @@ class UserController extends Controller
             return apiResponse(true, $user, 'User created successfully');
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function stripeConnect()
+    {
+        try {
+            $accountLink = $this->userService->sellerOnboarding();
+
+            return apiResponse(true, $accountLink);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, $ex->getCode());
         }
     }
 

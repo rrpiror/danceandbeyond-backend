@@ -10,6 +10,8 @@ use App\Repositories\UserAddressRepository;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Repositories\PaymentMethodRepository;
+use App\Services\PaymentService;
 
 class OrderService
 {
@@ -18,19 +20,33 @@ class OrderService
     protected UserAddressRepository $userAddressRepository;
     protected AddressRepository $addressRepository;
     protected OrderItemRepository $orderItemRepository;
+    protected PaymentMethodRepository $paymentMethodRepository;
+    protected PaymentService $paymentService;
 
-    public function __construct(OrderRepository $orderRepository, OrderItemRepository $orderItemRepository, ProductRepository $productRepository, UserAddressRepository $userAddressRepository, AddressRepository $addressRepository)
+    public function __construct(OrderRepository $orderRepository, OrderItemRepository $orderItemRepository, ProductRepository $productRepository, UserAddressRepository $userAddressRepository, AddressRepository $addressRepository, PaymentMethodRepository $paymentMethodRepository, PaymentService $paymentService)
     {
         $this->orderRepository = $orderRepository;
         $this->orderItemRepository = $orderItemRepository;
         $this->productRepository = $productRepository;
         $this->userAddressRepository = $userAddressRepository;
         $this->addressRepository = $addressRepository;
+        $this->paymentMethodRepository = $paymentMethodRepository;
+        $this->paymentService = $paymentService;
+    }
+
+    public function getAllPaymentMethods()
+    {
+        return $this->paymentMethodRepository->getAll();
     }
 
     public function update(array $data)
     {
         $order = $this->orderRepository->findById($data['order_id']);
+
+        if (!$order) {
+            throw new Exception('Order not found.', 404);
+        }
+
         $order->status = $data['status'];
         $order->save();
         return $order;
@@ -54,10 +70,12 @@ class OrderService
             $data['addresses'] = json_encode($addresses);
             $order = $this->orderRepository->create($data);
 
+            $orderAmount = 0;
             foreach ($data['items'] as $item) {
                 $item['order_id'] = $order->id;
                 $item['product_snapshot'] = json_encode($this->productRepository->findById($item['product_id']));
                 $orderItem = $this->orderItemRepository->create($item);
+                $orderAmount += $item['price'];
 
                 if (isset($item['size_id'])) {
                     $orderItem->sizes()->sync($item['size_id']);
@@ -66,10 +84,12 @@ class OrderService
 
             DB::commit();
 
-            return $order;
+            $paymentIntent = $this->paymentService->createStripePaymentIntent($order);
+
+            return $paymentIntent;
         } catch (Exception $ex) {
             DB::rollBack();
-            throw $ex;
+            throw new Exception($ex->getMessage(), 422);
         }
     }
 }

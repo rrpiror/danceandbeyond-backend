@@ -11,8 +11,6 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::dropIfExists('product_reviews');
-
         Schema::create('user_reviews', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('seller_id');

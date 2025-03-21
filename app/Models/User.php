@@ -6,13 +6,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Cashier\Billable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 class User extends Authenticatable implements HasMedia
 {
-    use HasFactory, SoftDeletes, Notifiable, HasApiTokens, InteractsWithMedia;
+    use HasFactory, SoftDeletes, Notifiable, HasApiTokens, InteractsWithMedia, Billable;
 
     protected $fillable = [
         'name',
@@ -24,13 +25,18 @@ class User extends Authenticatable implements HasMedia
         'reset_password_token',
         'reset_password_token_at',
         'type',
-        'status'
+        'status',
+        'stripe_account_id'
     ];
 
     protected $hidden = [
         'password',
-				'remember_token',
+        'remember_token',
     ];
+
+		public function products() {
+			return $this->hasMany(Product::class);
+		}
 
     public function address()
     {
@@ -44,11 +50,26 @@ class User extends Authenticatable implements HasMedia
 
     public function favouriteProducts()
     {
-        return $this->belongsToMany(Product::class, 'favourite_products', 'user_id', 'product_id')->withTimestamps();
+        return $this->belongsToMany(Product::class, 'favourite_products')->withTimestamps();
     }
 
-    public function reviews()
+    public function getProfilePictureAttribute()
+    {
+        return $this->getFirstMediaUrl('profile_picture');
+    }
+
+    public function reviewsGiven()
     {
         return $this->hasMany(UserReview::class);
+    }
+
+		public function reviewsReceived()
+		{
+				return $this->hasManyThrough(ProductReview::class, Product::class);
+		}
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('profile_picture')->singleFile();
     }
 }

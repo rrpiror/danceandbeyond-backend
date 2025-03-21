@@ -11,12 +11,14 @@ use Laravel\Nova\Fields\File;
 use Laravel\Nova\Fields\Gravatar;
 use Laravel\Nova\Fields\HasOne;
 use Laravel\Nova\Fields\ID;
+use Laravel\Nova\Fields\Image;
 use Laravel\Nova\Fields\Password;
 use Laravel\Nova\Fields\Select;
 use Laravel\Nova\Fields\Text;
 use Laravel\Nova\Fields\Textarea;
 use Laravel\Nova\Http\Requests\NovaRequest;
 use Laravel\Nova\Http\Requests\ResourceDetailRequest;
+use Laravel\Nova\Fields\BelongsToMany;
 
 class User extends Resource
 {
@@ -59,7 +61,28 @@ class User extends Resource
 
 			Boolean::make('Status')->trueValue('active')->falseValue('blocked')->default('active'),
 
-			File::make('Profile Picture')->acceptedTypes('image/*'),
+			Image::make('Profile Picture')
+				->disk('public')
+				->thumbnail(function ($value, $model) {
+					return $model instanceof \App\Models\User
+						? $model->getFirstMediaUrl('profile_picture')
+						: null;
+				})
+				->preview(function ($value, $model) {
+					return $model instanceof \App\Models\User
+						? $model->getFirstMediaUrl('profile_picture')
+						: null;
+				})
+				->store(function (Request $request, $model) {
+					if ($request->hasFile('profile_picture')) {
+						$model->clearMediaCollection('profile_picture');
+						$model->addMediaFromRequest('profile_picture')
+							->toMediaCollection('profile_picture', 'public');
+						return true;
+					}
+					return false;
+				})
+				->deletable(false),
 
 			Gravatar::make()->maxWidth(50),
 
@@ -99,6 +122,8 @@ class User extends Resource
 
 					return false;
 				}),
+
+			BelongsToMany::make('Addresses', 'address', Address::class),
 		];
 	}
 

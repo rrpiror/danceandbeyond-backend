@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\BrandService;
+use App\Services\ProductService;
 use Exception;
 use Illuminate\Http\Request;
 
 class BrandController extends Controller
 {
-    protected BrandService $brandService;
+    protected ProductService $productService;
 
-    public function __construct(BrandService $brandService)
+    public function __construct(ProductService $productService)
     {
-        $this->brandService = $brandService;
+        $this->productService = $productService;
     }
 
     /**
@@ -28,7 +28,7 @@ class BrandController extends Controller
     public function index()
     {
         try {
-            $brands = $this->brandService->getAll();
+            $brands = $this->productService->getAllBrands();
             return apiResponse(true, $brands);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);

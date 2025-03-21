@@ -11,6 +11,8 @@ use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Stripe\Account;
+use Stripe\AccountLink;
 
 class UserService
 {
@@ -19,14 +21,21 @@ class UserService
     protected UserAddressRepository $userAddressRepository;
     protected AddressRepository $addressRepository;
     protected UserReviewRepository $userReviewRepository;
+    protected PaymentService $paymentService;
 
-    public function __construct(UserRepository $userRepository, UserSchoolRepository $userSchoolRepository, UserAddressRepository $userAddressRepository, AddressRepository $addressRepository, UserReviewRepository $userReviewRepository)
+    public function __construct(UserRepository $userRepository, UserSchoolRepository $userSchoolRepository, UserAddressRepository $userAddressRepository, AddressRepository $addressRepository, UserReviewRepository $userReviewRepository, PaymentService $paymentService)
     {
         $this->userRepository = $userRepository;
         $this->userSchoolRepository = $userSchoolRepository;
         $this->userAddressRepository = $userAddressRepository;
         $this->addressRepository = $addressRepository;
         $this->userReviewRepository = $userReviewRepository;
+        $this->paymentService = $paymentService;
+    }
+
+    public function createAddress(array $data)
+    {
+        return $this->addressRepository->create($data);
     }
 
     public function login(array $data)
@@ -35,19 +44,20 @@ class UserService
 
         if ($user) {
             if ($user->status == 'blocked') {
-                return apiResponse(false, null, 'Your account is blocked.');
+                throw new Exception('Your account is blocked.');
             }
-            if (Hash::check($data['password'], $user->password)) {
-                $token = $user->createToken(env('APP_KEY'));
-                if ($user->type == 'school') {
-                    $user->school = $user->school;
-                }
-                return apiResponse(true, ['user' => $user, 'token' => $token->plainTextToken]);
-            } else {
-                return apiResponse(false, ['password' => 'Incorrect password.'], 'Wrong Credentials.', 3, 401);
+
+            if (!Auth::attempt($data)) {
+                throw new Exception('Wrong Credentials.', 404);
             }
+
+            $token = $user->createToken(env('APP_KEY'));
+            if ($user->type == 'school') {
+                $user->school = $user->school;
+            }
+            return ['user' => $user, 'token' => $token->plainTextToken];
         } else {
-            return apiResponse(false, ['user' => 'No user registered with this email'], 'Wrong Credentials.', 2, 401);
+            throw new Exception('Wrong Credentials.');
         }
     }
 
@@ -87,6 +97,38 @@ class UserService
         } catch (Exception $ex) {
             DB::rollBack();
             throw $ex;
+        }
+    }
+
+    public function sellerOnboarding()
+    {
+        try {
+            $user = Auth::user();
+            $account = Account::create([
+                'type' => 'standard',
+            ]);
+
+            $user = $this->userRepository->findById($user->id);
+
+            if (!$user) {
+                throw new Exception('User not found', 404);
+            }
+
+            $this->paymentService->initStripe();
+
+            $user->stripe_account_id = $account->id;
+            $user->save();
+
+            $accountLink = AccountLink::create([
+                'account' => $account->id,
+                'refresh_url' => "https://www.example.com",
+                'return_url' => "https://www.example.com",
+                'type' => 'account_onboarding',
+            ]);
+
+            return $accountLink->url;
+        } catch (Exception $ex) {
+            throw new Exception($ex->getMessage(), 422);
         }
     }
 

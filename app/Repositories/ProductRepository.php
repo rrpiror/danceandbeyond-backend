@@ -15,12 +15,12 @@ class ProductRepository
 
     public function getAll()
     {
-        return $this->product->latest()->get();
+        return $this->product->latest()->withCount('reviews')->withAvg('reviews', 'rating')->get();
     }
 
     public function findById($id)
     {
-        return $this->product->with('productSizes.size', 'category', 'condition', 'brand', 'hiringDetail.unavailabilityDays')->find($id);
+        return $this->product->with('brand', 'category', 'condition', 'productSizes.size', 'colours', 'fulfillmentOptions', 'hiringDetail.unavailabilityDays', 'user:id,name', 'reviews.user:id,name')->find($id);
     }
 
     public function create(array $data)

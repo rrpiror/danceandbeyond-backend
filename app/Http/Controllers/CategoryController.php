@@ -2,23 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\CategoryService;
+use App\Services\ProductService;
 use Exception;
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
-    protected CategoryService $categoryService;
+    protected ProductService $productService;
 
-    public function __construct(CategoryService $categoryService)
+    public function __construct(ProductService $productService)
     {
-        $this->categoryService = $categoryService;
+        $this->productService = $productService;
     }
 
     public function index()
     {
         try {
-            $categories = $this->categoryService->getAll();
+            $categories = $this->productService->getAllCategories();
             return apiResponse(true, $categories);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);

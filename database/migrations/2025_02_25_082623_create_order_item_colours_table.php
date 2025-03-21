@@ -18,7 +18,7 @@ return new class extends Migration
             $table->softDeletes();
             $table->timestamps();
 
-            $table->foreign('order_item_id')->references('id')->on('orders')->onDelete('CASCADE')->onUpdate('CASCADE');
+            $table->foreign('order_item_id')->references('id')->on('order_items')->onDelete('CASCADE')->onUpdate('CASCADE');
             $table->foreign('colour_id')->references('id')->on('colours')->onDelete('CASCADE')->onUpdate('CASCADE');
         });
     }

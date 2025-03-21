@@ -76,4 +76,8 @@ class Product extends Model
     {
         return $this->hasOne(HiringDetail::class);
     }
+
+		public function reviews() {
+			return $this->hasMany(ProductReview::class);
+		}
 }

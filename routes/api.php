@@ -9,14 +9,18 @@ use App\Http\Controllers\{
     PaymentMethodController,
     ProductController,
     SizeController,
-    UserController
+    UserController,
+    SeederController
 };
 use Illuminate\Support\Facades\Route;
+//for testing purposes
+Route::post('/seed', [SeederController::class, 'seed']);
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/signup', [UserController::class, 'signup']);
 
 Route::middleware(['auth:api'])->group(function () {
+    Route::get('/stripe/connect', [UserController::class, 'stripeConnect']);
     Route::get('/products/favourite', [ProductController::class, 'favouriteProducts']);
     Route::post('/products/favourite/{id}', [ProductController::class, 'addFavourite']);
     Route::delete('/products/favourite/{id}', [ProductController::class, 'removeFavourite']);

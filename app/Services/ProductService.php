@@ -7,8 +7,14 @@ use App\Repositories\HiringUnavailabilityDayRepository;
 use App\Repositories\ProductFulfillmentOptionRepository;
 use App\Repositories\ProductRepository;
 use App\Repositories\ProductSizeRepository;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Repositories\BrandRepository;
+use App\Repositories\CategoryRepository;
+use App\Repositories\ConditionRepository;
+use App\Repositories\SizeRepository;
+use App\Repositories\FulfillmentOptionRepository;
 
 class ProductService
 {
@@ -17,14 +23,24 @@ class ProductService
     protected ProductSizeRepository $productSizeRepository;
     protected HiringDetailRepository $hiringDetailRepository;
     protected HiringUnavailabilityDayRepository $hiringUnavailbilityDayRepository;
+    protected BrandRepository $brandRepository;
+    protected CategoryRepository $categoryRepository;
+    protected ConditionRepository $conditionRepository;
+    protected SizeRepository $sizeRepository;
+    protected FulfillmentOptionRepository $fulfillmentOptionRepository;
 
-    public function __construct(ProductRepository $productRepository, ProductFulfillmentOptionRepository $productFulfillmentOptionRepository, ProductSizeRepository $productSizeRepository, HiringDetailRepository $hiringDetailRepository, HiringUnavailabilityDayRepository $hiringUnavailbilityDayRepository)
+    public function __construct(ProductRepository $productRepository, ProductFulfillmentOptionRepository $productFulfillmentOptionRepository, ProductSizeRepository $productSizeRepository, HiringDetailRepository $hiringDetailRepository, HiringUnavailabilityDayRepository $hiringUnavailbilityDayRepository, BrandRepository $brandRepository, CategoryRepository $categoryRepository, ConditionRepository $conditionRepository, SizeRepository $sizeRepository, FulfillmentOptionRepository $fulfillmentOptionRepository)
     {
         $this->productRepository = $productRepository;
         $this->productFulfillmentOptionRepository = $productFulfillmentOptionRepository;
         $this->productSizeRepository = $productSizeRepository;
         $this->hiringDetailRepository = $hiringDetailRepository;
         $this->hiringUnavailbilityDayRepository = $hiringUnavailbilityDayRepository;
+        $this->brandRepository = $brandRepository;
+        $this->categoryRepository = $categoryRepository;
+        $this->conditionRepository = $conditionRepository;
+        $this->sizeRepository = $sizeRepository;
+        $this->fulfillmentOptionRepository = $fulfillmentOptionRepository;
     }
 
     public function getAll()
@@ -32,9 +48,40 @@ class ProductService
         return $this->productRepository->getAll();
     }
 
+    public function getAllBrands()
+    {
+        return $this->brandRepository->getAll();
+    }
+
+    public function getAllCategories()
+    {
+        return $this->categoryRepository->getAll();
+    }
+
+    public function getAllConditions()
+    {
+        return $this->conditionRepository->getAll();
+    }
+
+    public function getAllSizes()
+    {
+        return $this->sizeRepository->getAll();
+    }
+
+    public function getAllFulfillmentOptions()
+    {
+        return $this->fulfillmentOptionRepository->getAll();
+    }
+
     public function findById($id)
     {
-        return $this->productRepository->findById($id);
+        $product = $this->productRepository->findById($id);
+
+        if (!$product) {
+            throw new Exception('Product not found.', 404);
+        }
+
+        return $product;
     }
 
     public function create(array $data)
@@ -81,6 +128,10 @@ class ProductService
             DB::beginTransaction();
 
             $product = $this->productRepository->findById($id);
+
+            if (!$product) {
+                throw new Exception('Product not found.', 404);
+            }
 
             $product->fill($data)->save();
 

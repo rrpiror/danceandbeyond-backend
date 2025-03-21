@@ -19,11 +19,12 @@ return new class extends Migration
             $table->boolean('email_verified')->default(true);
             $table->boolean('remember_me')->default(false);
             $table->dateTime('remember_me_at')->nullable();
-						$table->rememberToken();
+            $table->rememberToken();
             $table->text('reset_password_token')->nullable();
             $table->dateTime('reset_password_token_at')->nullable();
             $table->enum('type', ['individual', 'school']);
-            $table->enum('status', ['active', 'block']);
+            $table->enum('status', ['active', 'blocked']);
+            $table->string('stripe_account_id')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

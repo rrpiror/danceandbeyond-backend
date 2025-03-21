@@ -2,23 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\FulfillmentOptionService;
+use App\Services\ProductService;
 use Exception;
 use Illuminate\Http\Request;
 
 class FulfillmentOptionController extends Controller
 {
-    protected FulfillmentOptionService $fulfillmentOptionService;
+    protected ProductService $productService;
 
-    public function __construct(FulfillmentOptionService $fulfillmentOptionService)
+    public function __construct(ProductService $productService)
     {
-        $this->fulfillmentOptionService = $fulfillmentOptionService;
+        $this->productService = $productService;
     }
 
     public function index()
     {
         try {
-            $options = $this->fulfillmentOptionService->getAll();
+            $options = $this->productService->getAllFulfillmentOptions();
             return apiResponse(true, $options);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);

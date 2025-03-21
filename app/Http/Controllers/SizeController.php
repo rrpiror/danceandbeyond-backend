@@ -2,23 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\SizeService;
+use App\Services\ProductService;
 use Exception;
 use Illuminate\Http\Request;
 
 class SizeController extends Controller
 {
-    protected SizeService $sizeService;
+    protected ProductService $productService;
 
-    public function __construct(SizeService $sizeService)
+    public function __construct(ProductService $productService)
     {
-        $this->sizeService = $sizeService;
+        $this->productService = $productService;
     }
 
     public function index()
     {
         try {
-            $sizes = $this->sizeService->getAll();
+            $sizes = $this->productService->getAllSizes();
             return apiResponse(true, $sizes);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);

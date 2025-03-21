@@ -2,23 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\ConditionService;
+use App\Services\ProductService;
 use Exception;
 use Illuminate\Http\Request;
 
 class ConditionController extends Controller
 {
-    protected ConditionService $conditionService;
+    protected ProductService $productService;
 
-    public function __construct(ConditionService $conditionService)
+    public function __construct(ProductService $productService)
     {
-        $this->conditionService = $conditionService;
+        $this->productService = $productService;
     }
 
     public function index()
     {
         try {
-            $conditions = $this->conditionService->getAll();
+            $conditions = $this->productService->getAllConditions();
             return apiResponse(true, $conditions);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
