@@ -10,7 +10,8 @@ use App\Http\Controllers\{
     ProductController,
     SizeController,
     UserController,
-    SeederController
+    SeederController,
+    StripeWebHookController
 };
 use Illuminate\Support\Facades\Route;
 //for testing purposes
@@ -18,6 +19,8 @@ Route::post('/seed', [SeederController::class, 'seed']);
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/signup', [UserController::class, 'signup']);
+
+Route::post('/stripe/webhook', [StripeWebHookController::class, 'handleWebhook']);
 
 Route::middleware(['auth:api'])->group(function () {
     Route::get('/stripe/connect', [UserController::class, 'stripeConnect']);

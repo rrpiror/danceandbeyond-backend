@@ -13,6 +13,9 @@ use Laravel\Nova\Fields\Boolean;
 use Laravel\Nova\Fields\HasMany;
 use Laravel\Nova\Fields\Number;
 use Laravel\Nova\Fields\Textarea;
+use Laravel\Nova\Fields\KeyValue;
+use App\Repositories\UserAddressRepository;
+use Illuminate\Support\Facades\App;
 
 class Order extends Resource
 {
@@ -53,19 +56,83 @@ class Order extends Resource
 
             Select::make('Payment Method Id')->options(PaymentMethod::pluck('name', 'id'))->rules('required')->sortable()->displayUsingLabels(),
 
-            Boolean::make('Payment Confirmed')->trueValue('1')->falseValue('0')->default(0)->rules('required'),
-
-            Select::make('Status')->options([
-                'confirmed' => 'Confrimed',
-                'cancelled' => 'Cancelled',
-                'pending' => 'Pending'
-            ])->rules('required'),
-
             HasMany::make('Order Items', 'orderItems', OrderItem::class),
 
             Number::make('Amount')->rules('required')->min(0),
 
-            Textarea::make('Addresses')->rules('required'),
+					Select::make('Shipping Address')
+						->options(function () use ($request) {
+							$userId = $request->input('user_id') ?? $request->findModelOrFail()->user_id ?? null;
+							if (!$userId) return [];
+
+							$userAddressRepo = App::make(UserAddressRepository::class);
+							$addresses = $userAddressRepo->findByUserId($userId);
+
+							$options = [];
+							foreach ($addresses as $userAddress) {
+								if ($userAddress->type === 'shipping' || $userAddress->type === 'both') {
+									$address = $userAddress->address;
+									$addressText = $address->house_number . ' ' .
+										$address->building_name . ', ' .
+										$address->street . ', ' .
+										$address->town . ', ' .
+										$address->city . ', ' .
+										$address->postcode;
+									$options[$userAddress->address_id] = $addressText;
+								}
+							}
+
+							return $options;
+						})
+						->hideFromIndex()
+						->dependsOn('user_id', function ($value, $request, $formData) {
+							return $value !== null;
+						})
+						->fillUsing(function () {
+							// Don't actually save this field to the database
+							return null;
+						})
+						->hideFromDetail(),
+
+					Select::make('Billing Address')
+						->options(function () use ($request) {
+							$userId = $request->input('user_id') ?? $request->findModelOrFail()->user_id ?? null;
+							if (!$userId) return [];
+
+							$userAddressRepo = App::make(UserAddressRepository::class);
+							$addresses = $userAddressRepo->findByUserId($userId);
+
+							$options = [];
+							foreach ($addresses as $userAddress) {
+								if ($userAddress->type === 'billing' || $userAddress->type === 'both') {
+									$address = $userAddress->address;
+									$addressText = $address->house_number . ' ' .
+										$address->building_name . ', ' .
+										$address->street . ', ' .
+										$address->town . ', ' .
+										$address->city . ', ' .
+										$address->postcode;
+									$options[$userAddress->address_id] = $addressText;
+								}
+							}
+
+							return $options;
+						})
+						->hideFromIndex()
+						->dependsOn('user_id', function ($value, $request, $formData) {
+							return $value !== null;
+						})
+						->fillUsing(function () {
+							// Don't actually save this field to the database
+							return null;
+						})
+					->hideFromDetail(),
+
+					Textarea::make('Addresses')
+						->rules('json')
+						->hideFromIndex()
+						->hideWhenCreating()
+						->hideWhenUpdating(),
 
         ];
     }

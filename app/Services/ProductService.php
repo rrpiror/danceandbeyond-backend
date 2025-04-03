@@ -169,7 +169,7 @@ class ProductService
     public function addFavourite($productId)
     {
         $user = Auth::user();
-        $user->favouriteProducts()->sync($productId);
+        $user->favouriteProducts()->syncWithoutDetaching($productId);
         return true;
     }
 

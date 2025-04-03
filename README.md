@@ -15,3 +15,5 @@ php artisan l5-swagger:generate
 [Swagger Documentation](http://localhost:8000/api/documentation)
 
 use login endpoint with your credentials, you'll get a token in response, copy that token and paste it like this "Bearer your-token" in Authorize button of swagger
+
+stripe listen --forward-to http://localhost:8000/api/stripe/webhook

@@ -4,7 +4,9 @@ namespace Database\Seeders;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderStatus;
 use App\Models\Product;
+use App\Models\SellerOrder;
 use Illuminate\Database\Seeder;
 
 class OrderItemSeeder extends Seeder
@@ -16,24 +18,37 @@ class OrderItemSeeder extends Seeder
     {
         $orders = Order::all();
         $products = Product::all();
-        
+        $orderStatuses = OrderStatus::all();
+
         foreach ($orders as $order) {
             // Each order gets 1-3 items
             $numItems = rand(1, 3);
-            $orderTotal = 0;
             $usedProductIds = [];
-            
+            $sellerOrders = [];
+
             for ($i = 0; $i < $numItems; $i++) {
                 // Get a random product that hasn't been used for this order yet
                 do {
                     $product = $products->random();
                 } while (in_array($product->id, $usedProductIds));
-                
+
                 $usedProductIds[] = $product->id;
-                
+                $sellerId = $product->user_id; // Assuming `seller_id` exists in `products` table
+
+                // Check if we already created an order for this seller, otherwise create one
+                if (!isset($sellerOrders[$sellerId])) {
+                    $sellerOrders[$sellerId] = SellerOrder::create([
+                        'order_id' => $order->id,
+                        'seller_id' => $sellerId,
+                        'amount' => 0, // Will update later
+                    ]);
+                }
+
+                $sellerOrder = $sellerOrders[$sellerId];
+
                 $quantity = rand(1, 3);
                 $isHire = $product->type === 'hire';
-                
+
                 // Create product snapshot
                 $productSnapshot = [
                     'id' => $product->id,
@@ -54,11 +69,11 @@ class OrderItemSeeder extends Seeder
                         'name' => $product->condition ? $product->condition->name : null,
                     ],
                 ];
-                
+
                 if ($isHire && $product->hiringDetail) {
                     $days = rand($product->hiringDetail->min_hire_days, 10);
                     $price = $product->price + ($product->hiringDetail->additional_fee_per_day * $days);
-                    
+
                     $productSnapshot['hiring_details'] = [
                         'days' => $days,
                         'start_date' => now()->addDays(rand(1, 7))->format('Y-m-d'),
@@ -67,22 +82,21 @@ class OrderItemSeeder extends Seeder
                 } else {
                     $price = $product->price;
                 }
-                
+
                 $totalPrice = $price * $quantity;
-                
+
+                // Create Order Item linked to the seller order
                 OrderItem::create([
-                    'order_id' => $order->id,
+                    'seller_order_id' => $sellerOrder->id,
                     'product_id' => $product->id,
                     'quantity' => $quantity,
                     'price' => $price,
                     'product_snapshot' => json_encode($productSnapshot),
                 ]);
-                
-                $orderTotal += $totalPrice;
+
+                // Update seller order total
+                $sellerOrder->increment('amount', $totalPrice);
             }
-            
-            // Update order total
-            $order->update(['amount' => $orderTotal]);
         }
     }
-} 
+}

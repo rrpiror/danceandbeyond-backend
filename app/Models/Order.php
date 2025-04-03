@@ -19,8 +19,18 @@ class Order extends Model
         'addresses'
     ];
 
+    public function sellerOrders()
+    {
+        return $this->hasMany(SellerOrder::class);
+    }
+
+    public function statuses()
+    {
+        return $this->hasMany(OrderStatus::class);
+    }
+
     public function orderItems()
     {
-        return $this->hasMany(OrderItem::class);
+        return $this->hasManyThrough(OrderItem::class, SellerOrder::class);
     }
 }

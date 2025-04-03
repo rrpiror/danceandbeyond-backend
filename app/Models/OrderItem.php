@@ -11,16 +11,16 @@ class OrderItem extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'order_id',
+        'seller_order_id',
         'product_id',
         'quantity',
         'price',
         'product_snapshot'
     ];
 
-    public function order()
+    public function sellerOrder()
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsTo(SellerOrder::class);
     }
 
     public function product()

@@ -95,7 +95,7 @@ class UserController extends Controller
     public function stripeConnect()
     {
         try {
-            $accountLink = $this->userService->sellerOnboarding();
+            $accountLink = $this->userService->userOnboarding();
 
             return apiResponse(true, $accountLink);
         } catch (Exception $ex) {

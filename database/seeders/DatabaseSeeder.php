@@ -50,6 +50,8 @@ class DatabaseSeeder extends Seeder
             NotificationSeeder::class,
             UserReviewSeeder::class,
             ProductReviewSeeder::class,
+
+            OrderStatusSeeder::class,
         ]);
     }
 }

@@ -19,15 +19,11 @@ class OrderSeeder extends Seeder
         $addresses = Address::all();
         $paymentMethods = PaymentMethod::all();
         
-        $statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
-        
         // Create 20 orders
         for ($i = 1; $i <= 20; $i++) {
             $user = $users->random();
             $address = $addresses->random();
             $paymentMethod = $paymentMethods->random();
-            $status = $statuses[array_rand($statuses)];
-            $paymentConfirmed = rand(0, 1);
             
             // Random date within the last 30 days
             $date = now()->subDays(rand(0, 30));
@@ -58,8 +54,6 @@ class OrderSeeder extends Seeder
                 'user_id' => $user->id,
                 'payment_method_id' => $paymentMethod->id,
                 'amount' => 0, // Will be updated after adding order items
-                'payment_confirmed' => $paymentConfirmed,
-                'status' => $status,
                 'addresses' => $addressesJson,
                 'created_at' => $date,
                 'updated_at' => $date,

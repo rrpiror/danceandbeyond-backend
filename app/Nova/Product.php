@@ -17,6 +17,7 @@ use Laravel\Nova\Fields\Select;
 use Laravel\Nova\Fields\Text;
 use Laravel\Nova\Fields\Textarea;
 use Laravel\Nova\Http\Requests\NovaRequest;
+use Ebess\AdvancedNovaMediaLibrary\Fields\Images;
 
 class Product extends Resource
 {
@@ -72,7 +73,12 @@ class Product extends Resource
 
             Textarea::make('Description')->rules('required'),
 
-            Number::make('Price')->rules('required')->min(0),
+            Number::make('Price')->rules('required', 'numeric', 'min:0')->step(0.01),
+
+            Images::make('Images')
+                ->rules('required')
+                ->hideFromIndex()
+                ->singleImageRules('dimensions:min_width=100,min_height=200'),
 
             BelongsToMany::make('Fulfillment Options', 'fulfillmentOptions', FulfillmentOption::class),
 

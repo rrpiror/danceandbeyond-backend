@@ -24,7 +24,8 @@ return new class extends Migration
             $table->dateTime('reset_password_token_at')->nullable();
             $table->enum('type', ['individual', 'school']);
             $table->enum('status', ['active', 'blocked']);
-            $table->string('stripe_account_id')->nullable();
+            $table->string('stripe_seller_id')->nullable();
+            $table->string('stripe_customer_id')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

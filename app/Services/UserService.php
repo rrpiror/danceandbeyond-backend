@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Stripe\Account;
 use Stripe\AccountLink;
+use Stripe\Customer;
 
 class UserService
 {
@@ -44,7 +45,7 @@ class UserService
 
         if ($user) {
             if ($user->status == 'blocked') {
-                throw new Exception('Your account is blocked.');
+                throw new Exception('Your account is blocked.', 403);
             }
 
             if (!Auth::attempt($data)) {
@@ -57,7 +58,7 @@ class UserService
             }
             return ['user' => $user, 'token' => $token->plainTextToken];
         } else {
-            throw new Exception('Wrong Credentials.');
+            throw new Exception('Wrong Credentials.', 404);
         }
     }
 
@@ -88,6 +89,14 @@ class UserService
 
             DB::commit();
 
+            $customer = Customer::create([
+                'email' => $data['email'],
+                'name' => $data['name'],
+            ]);
+
+            $user->stripe_customer_id = $customer->id;
+            $user->save();
+
             $token = $user->createToken(env('APP_KEY'));
             if ($user->type == 'school') {
                 $user->school = $user->school;
@@ -100,7 +109,7 @@ class UserService
         }
     }
 
-    public function sellerOnboarding()
+    public function userOnboarding()
     {
         try {
             $user = Auth::user();
@@ -114,15 +123,13 @@ class UserService
                 throw new Exception('User not found', 404);
             }
 
-            $this->paymentService->initStripe();
-
-            $user->stripe_account_id = $account->id;
+            $user->stripe_seller_id = $account->id;
             $user->save();
 
             $accountLink = AccountLink::create([
                 'account' => $account->id,
-                'refresh_url' => "https://www.example.com",
-                'return_url' => "https://www.example.com",
+                'refresh_url' => env('REFRESH_URL'),
+                'return_url' => env("RETURN_URL"),
                 'type' => 'account_onboarding',
             ]);
 

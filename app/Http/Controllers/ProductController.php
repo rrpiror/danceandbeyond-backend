@@ -11,6 +11,17 @@ class ProductController extends Controller
 {
     protected ProductService $productService;
     protected ValidationService $validationService;
+    private const CREATE_RULES = [
+        'category_id' => 'required',
+        'condition_id' => 'required',
+        'brand_id' => 'required',
+        'name' => 'required',
+        'description' => 'required',
+        'price' => 'required',
+        'type' => 'required',
+        'fulfillment_options' => 'required',
+        'sizes' => 'required'
+    ];
 
     public function __construct(ProductService $productService, ValidationService $validationService)
     {
@@ -52,17 +63,7 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         try {
-            $rules = [
-                'category_id' => 'required',
-                'condition_id' => 'required',
-                'brand_id' => 'required',
-                'name' => 'required',
-                'description' => 'required',
-                'price' => 'required',
-                'type' => 'required',
-                'fulfillment_options' => 'required',
-                'sizes' => 'required'
-            ];
+            $rules = self::CREATE_RULES;
 
             if ($request->type == 'hire') {
                 $rules['hiring_details'] = 'required';
@@ -84,17 +85,7 @@ class ProductController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            $rules = [
-                'category_id' => 'required',
-                'condition_id' => 'required',
-                'brand_id' => 'required',
-                'name' => 'required',
-                'description' => 'required',
-                'price' => 'required',
-                'type' => 'required',
-                'fulfillment_options' => 'required',
-                'sizes' => 'required'
-            ];
+            $rules = self::CREATE_RULES;
 
             if ($request->type == 'hire') {
                 $rules['hiring_details'] = 'required';

@@ -16,9 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('payment_method_id');
             $table->float('amount');
-            $table->boolean('payment_confirmed')->default(false);
-            $table->string('status');
-            $table->text('addresses');
+            $table->json('addresses');
             $table->softDeletes();
             $table->timestamps();
 

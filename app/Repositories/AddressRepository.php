@@ -17,4 +17,9 @@ class AddressRepository
     {
         return $this->address->create($data);
     }
+
+    public function findAddressesByIds(array $ids)
+    {
+        return $this->address->whereIn('id', $ids)->get();
+    }
 }

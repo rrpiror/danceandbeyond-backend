@@ -3,6 +3,7 @@
 namespace App\Nova;
 
 use App\Nova\UserSchool;
+use Ebess\AdvancedNovaMediaLibrary\Fields\Images;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Laravel\Nova\Auth\PasswordValidationRules;
@@ -61,28 +62,9 @@ class User extends Resource
 
 			Boolean::make('Status')->trueValue('active')->falseValue('blocked')->default('active'),
 
-			Image::make('Profile Picture')
-				->disk('public')
-				->thumbnail(function ($value, $model) {
-					return $model instanceof \App\Models\User
-						? $model->getFirstMediaUrl('profile_picture')
-						: null;
-				})
-				->preview(function ($value, $model) {
-					return $model instanceof \App\Models\User
-						? $model->getFirstMediaUrl('profile_picture')
-						: null;
-				})
-				->store(function (Request $request, $model) {
-					if ($request->hasFile('profile_picture')) {
-						$model->clearMediaCollection('profile_picture');
-						$model->addMediaFromRequest('profile_picture')
-							->toMediaCollection('profile_picture', 'public');
-						return true;
-					}
-					return false;
-				})
-				->deletable(false),
+			Images::make('Profile Picture', 'profile_picture')
+				->hideFromIndex()
+				->singleImageRules('dimensions:min_width=100,min_height=200'),
 
 			Gravatar::make()->maxWidth(50),
 

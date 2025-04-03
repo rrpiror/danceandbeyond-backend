@@ -11,6 +11,15 @@ class OrderController extends Controller
 {
     protected OrderService $orderService;
     protected ValidationService $validationService;
+    private const CREATE_RULES = [
+        'payment_method_id' => 'required|integer',
+        'items' => 'required|array|min:1',
+        'items.*.product_id' => 'required|integer|exists:products,id',
+        'items.*.quantity' => 'required|integer|min:1',
+        'items.*.size_id' => 'required|integer|exists:sizes,id',
+        'billing_address_id' => 'required|integer|exists:addresses,id',
+        'shipping_address_id' => 'required|integer|exists:addresses,id',
+    ];
 
     public function __construct(OrderService $orderService, ValidationService $validationService)
     {
@@ -18,20 +27,20 @@ class OrderController extends Controller
         $this->validationService = $validationService;
     }
 
+    public function index()
+    {
+        try {
+            $orders = $this->orderService->getAll();
+            return apiResponse(true, $orders, "Orders retrieved successfully");
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, $ex->getCode() ?? 500);
+        }
+    }
+
     public function store(Request $request)
     {
         try {
-            $rules = [
-                'payment_method_id' => 'required',
-                'amount' => 'required',
-                'items' => 'required',
-                'billing_address.house_number' => 'required',
-                'billing_address.street' => 'required',
-                'billing_address.city' => 'required',
-                'billing_address.postcode' => 'required'
-            ];
-
-            $validation = $this->validationService->validate($request, $rules);
+            $validation = $this->validationService->validate($request, self::CREATE_RULES);
 
             if ($validation) {
                 return apiResponse(false, $validation, 'Invalid data', 5, 422);
@@ -41,29 +50,7 @@ class OrderController extends Controller
 
             return apiResponse(true, $order, "Order placed");
         } catch (Exception $ex) {
-            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 500);
-        }
-    }
-
-    public function update(Request $request)
-    {
-        try {
-            $rules = [
-                'order_id' => 'required',
-                'status' => 'required'
-            ];
-
-            $validation = $this->validationService->validate($request, $rules);
-
-            if ($validation) {
-                return apiResponse(false, $validation, 'Invalid data', 5, 422);
-            }
-
-            $order = $this->orderService->update($request->all());
-
-            return apiResponse(true, $order, "Order updated");
-        } catch (Exception $ex) {
-            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 500);
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, $ex->getCode() ?? 500);
         }
     }
 }

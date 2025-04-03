@@ -26,7 +26,8 @@ class User extends Authenticatable implements HasMedia
         'reset_password_token_at',
         'type',
         'status',
-        'stripe_account_id'
+        'stripe_seller_id',
+        'stripe_customer_id'
     ];
 
     protected $hidden = [

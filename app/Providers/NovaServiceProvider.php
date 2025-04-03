@@ -25,6 +25,7 @@ use Laravel\Nova\Menu\MenuItem;
 use Laravel\Nova\Menu\MenuSection;
 use Laravel\Nova\Nova;
 use Laravel\Nova\NovaApplicationServiceProvider;
+use App\Nova\Transaction;
 
 class NovaServiceProvider extends NovaApplicationServiceProvider
 {
@@ -59,6 +60,10 @@ class NovaServiceProvider extends NovaApplicationServiceProvider
 				MenuItem::resource(ProductSize::class),
 			];
 
+			$transactionsResources = [
+				MenuItem::resource(Transaction::class),
+			];
+
 			$ordersResources = [
 				MenuItem::resource(Order::class),
 				MenuItem::resource(OrderItem::class),
@@ -66,13 +71,12 @@ class NovaServiceProvider extends NovaApplicationServiceProvider
 			];
 
 			return [
-
 				MenuSection::dashboard(Main::class),
 				MenuSection::make('Users', $usersResources)->collapsable()->collapsedByDefault(),
 				MenuSection::make('Products', $productsResources)->collapsable()->collapsedByDefault(),
 				MenuSection::make('Orders', $ordersResources)->collapsable()->collapsedByDefault(),
+				MenuSection::make('Transactions', $transactionsResources),
 				MenuSection::make('Additional Mapping Tables', $additionalMappingTables)->collapsable()->collapsedByDefault(),
-
 			];
 		});
 	}
