@@ -13,6 +13,7 @@ class PayoutTransaction extends Model
     protected $fillable = [
         'transaction_id',
         'seller_id',
+        'commission',
     ];
 
     public function transaction()

@@ -17,4 +17,9 @@ class PayoutTransactionRepository
     {
         return $this->payoutTransaction->create($data);
     }
+
+    public function getSellerTransactions($sellerId)
+    {
+        return $this->payoutTransaction->where('seller_id', $sellerId)->with('transaction')->latest()->get();
+    }
 }

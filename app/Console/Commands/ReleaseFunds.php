@@ -49,9 +49,10 @@ class ReleaseFunds extends Command
         foreach ($orders as $order) {
             $amount = $order->amount * 100;
             $commission = $amount * env('PLATFORM_FEE');
+            $finalAmount = $amount + $commission;
 
             $transfer = Transfer::create([
-                'amount' => $commission,
+                'amount' => $finalAmount,
                 'currency' => env('CASHIER_CURRENCY', 'gbp'),
                 'destination' => $order->seller->seller->seller_stripe_id,
                 'description' => "Payout for order #{$order->id}",
@@ -61,13 +62,14 @@ class ReleaseFunds extends Command
 
             $transaction = $this->transactionRepository->create([
                 'stripe_payment_id' => $transfer->id,
-                'amount' => $commission,
+                'amount' => $finalAmount,
                 'type' => 'payout',
             ]);
 
             $this->payoutTransactionRepository->create([
                 'transaction_id' => $transaction->id,
                 'seller_id' => $order->seller_id,
+                'commission' => $commission / 100,
             ]);
 
             $this->info("Funds released for order #{$order->id} to seller #{$order->seller_id}");

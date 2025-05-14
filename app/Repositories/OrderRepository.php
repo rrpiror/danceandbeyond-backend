@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\Order;
+use Illuminate\Support\Facades\Auth;
 
 class OrderRepository
 {
@@ -15,7 +16,7 @@ class OrderRepository
 
     public function findById($id)
     {
-        return $this->order->find($id);
+        return $this->order->where('user_id', Auth::user()->id)->find($id);
     }
 
     public function create(array $data)
@@ -25,6 +26,6 @@ class OrderRepository
 
     public function getAll()
     {
-        return $this->order->latest()->get();
+        return $this->order->where('user_id', Auth::user()->id)->latest()->get();
     }
 }

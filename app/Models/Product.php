@@ -66,7 +66,7 @@ class Product extends Model implements HasMedia
 
     public function colours()
     {
-        return $this->belongsToMany(Colour::class, 'product_colours', 'product_id', 'colour_id');
+        return $this->belongsToMany(Colour::class, 'product_colours', 'product_id', 'colour_id')->withTimestamps();
     }
 
     public function productColours()
@@ -87,5 +87,10 @@ class Product extends Model implements HasMedia
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('images');
+    }
+
+    public function shippingServiceProviders()
+    {
+        return $this->belongsToMany(ShippingServiceProvider::class, 'product_shipping_service_providers', 'product_id', 'service_provider_id')->withTimestamps();
     }
 }

@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('transaction_id');
             $table->unsignedBigInteger('seller_id');
+            $table->float('commission');
             $table->softDeletes();
             $table->timestamps();
 

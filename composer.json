@@ -9,7 +9,7 @@
     ],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
+        "php": "^8.1",
         "ebess/advanced-nova-media-library": "^4.2",
         "dab/test-field": "@dev",
         "darkaonline/l5-swagger": "^9.0",

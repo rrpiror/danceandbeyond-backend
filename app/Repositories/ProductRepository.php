@@ -36,4 +36,9 @@ class ProductRepository
     {
         return $this->product->with('hiringDetail')->whereIn('id', $ids)->get();
     }
+
+    public function findProductsByUserId($userId)
+    {
+        return $this->product->where('user_id', $userId)->with('media', 'brand')->latest()->get();
+    }
 }

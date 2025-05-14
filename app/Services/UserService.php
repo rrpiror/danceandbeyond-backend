@@ -87,6 +87,18 @@ class UserService
                 $this->userSchoolRepository->create($data['school']);
             }
 
+            if (isset($data['profile_image']) && $data['profile_image']) {
+                $imageType = explode(';', $data['profile_image'])[0];
+                $imageType = explode('/', $imageType)[1];
+
+                if (!in_array(strtolower($imageType), ['jpg', 'jpeg', 'png'])) {
+                    throw new Exception('Invalid image type. Only JPG, JPEG and PNG are allowed.', 422);
+                }
+
+                $user->addMediaFromBase64($data['profile_image'])
+                    ->toMediaCollection('profile');
+            }
+
             DB::commit();
 
             $customer = Customer::create([
@@ -139,15 +151,32 @@ class UserService
         }
     }
 
-    public function update(array $data, $id)
+    public function update(array $data)
     {
-        $user = $this->userRepository->findById($id);
+        $user = $this->userRepository->findById(Auth::user()->id);
 
         $user->fill($data)->save();
 
-        if (isset($data['file'])) {
-            $user->addMedia($data['file'])
-                ->toMediaCollection('profile_pictures');
+        if (isset($data['profile_image']) && $data['profile_image']) {
+            $imageType = explode(';', $data['profile_image'])[0];
+            $imageType = explode('/', $imageType)[1];
+
+            if (!in_array(strtolower($imageType), ['jpg', 'jpeg', 'png'])) {
+                throw new Exception('Invalid image type. Only JPG, JPEG and PNG are allowed.', 422);
+            }
+
+            $user->addMediaFromBase64($data['profile_image'])
+                ->toMediaCollection('profile');
+        }
+
+        if (isset($data['address']) && is_array($data['address'])) {
+            foreach ($data['address'] as $address) {
+                $this->addressRepository->findById($address['id'])->fill($address)->save();
+            }
+        }
+
+        if ($data['type'] == 'school') {
+            $user->school->fill($data['school'])->save();
         }
 
         return $user;
@@ -161,6 +190,25 @@ class UserService
 
     public function getReviews($sellerId)
     {
-        return $this->userReviewRepository->findBySellerId($sellerId);
+        $reviews = $this->userReviewRepository->findBySellerId($sellerId);
+        $totalReviews = $reviews->count();
+        $averageRating = $reviews->avg('rating');
+
+        return [
+            'reviews' => $reviews,
+            'total_reviews' => $totalReviews,
+            'average_rating' => $averageRating
+        ];
+    }
+
+    public function getProfile()
+    {
+        $user = Auth::user();
+
+        $profile = $this->userRepository->findById($user->id);
+
+        $profile->load('school', 'media', 'address');
+
+        return $profile;
     }
 }

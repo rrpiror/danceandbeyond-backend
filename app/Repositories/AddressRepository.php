@@ -18,6 +18,11 @@ class AddressRepository
         return $this->address->create($data);
     }
 
+    public function findById($id)
+    {
+        return $this->address->find($id);
+    }
+
     public function findAddressesByIds(array $ids)
     {
         return $this->address->whereIn('id', $ids)->get();

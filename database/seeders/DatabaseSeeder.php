@@ -42,6 +42,7 @@ class DatabaseSeeder extends Seeder
             OrderItemSeeder::class,
             OrderItemColourSeeder::class,
             OrderItemSizeSeeder::class,
+            ShippingServiceProviderSeeder::class,
             
             // Communication
             ChatSeeder::class,

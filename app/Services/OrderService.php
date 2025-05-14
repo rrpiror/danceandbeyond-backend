@@ -14,6 +14,7 @@ use App\Repositories\ProductRepository;
 use App\Repositories\SellerOrderRepository;
 use App\Services\PaymentService;
 use App\Repositories\UserAddressRepository;
+use App\Repositories\PayoutTransactionRepository;
 
 /**
  * OrderService handles all order-related business logic including creation, updates, and retrieval of orders.
@@ -30,8 +31,9 @@ class OrderService
     protected PaymentService $paymentService;
     protected SellerOrderRepository $sellerOrderRepository;
     protected OrderStatusRepository $orderStatusRepository;
+    protected PayoutTransactionRepository $payoutTransactionRepository;
 
-    public function __construct(OrderRepository $orderRepository, OrderItemRepository $orderItemRepository, ProductRepository $productRepository, UserAddressRepository $userAddressRepository, AddressRepository $addressRepository, PaymentMethodRepository $paymentMethodRepository, PaymentService $paymentService, SellerOrderRepository $sellerOrderRepository, OrderStatusRepository $orderStatusRepository)
+    public function __construct(OrderRepository $orderRepository, OrderItemRepository $orderItemRepository, ProductRepository $productRepository, UserAddressRepository $userAddressRepository, AddressRepository $addressRepository, PaymentMethodRepository $paymentMethodRepository, PaymentService $paymentService, SellerOrderRepository $sellerOrderRepository, OrderStatusRepository $orderStatusRepository, PayoutTransactionRepository $payoutTransactionRepository)
     {
         $this->orderRepository = $orderRepository;
         $this->orderItemRepository = $orderItemRepository;
@@ -42,6 +44,7 @@ class OrderService
         $this->paymentService = $paymentService;
         $this->sellerOrderRepository = $sellerOrderRepository;
         $this->orderStatusRepository = $orderStatusRepository;
+        $this->payoutTransactionRepository = $payoutTransactionRepository;
     }
 
     /**
@@ -147,7 +150,6 @@ class OrderService
 
             // Create the main order
             $order = $this->orderRepository->create($data);
-
             // Group items by seller and create separate seller orders
             $sellerItems = $itemsCollection->groupBy(function ($item) use ($products) {
                 return $products[$item['product_id']]->user_id;
@@ -161,10 +163,15 @@ class OrderService
             DB::commit();
 
             // Create payment intent for the order
-            return $this->paymentService->createStripePaymentIntent(
+            $stripeUrl = $this->paymentService->createStripePaymentIntent(
                 $order->toArray(),
                 $itemsArray
             );
+
+            return [
+                'order' => $order,
+                'stripe_url' => $stripeUrl
+            ];
         } catch (Exception $ex) {
             DB::rollBack();
             throw new Exception($ex->getMessage(), 422);
@@ -224,5 +231,23 @@ class OrderService
                 $orderItem->sizes()->sync($item['size_id']);
             }
         }
+    }
+
+    public function getSellerInfo()
+    {
+        $user = Auth::user();
+
+        $sales = $this->sellerOrderRepository->findSalesProductsBySeller($user->id)->count();
+        $hires = $this->sellerOrderRepository->findHireProductsBySeller($user->id)->count();
+        $payouts = $this->payoutTransactionRepository->getSellerTransactions($user->id);
+        $commission = $payouts->sum('commission');
+        $income = $payouts->sum('transaction.amount') - $commission;
+
+        return [
+            'sales' => $sales,
+            'hires' => $hires,
+            'income' => $income,
+            'commission' => $commission
+        ];
     }
 }

@@ -20,6 +20,6 @@ class UserReviewRepository
 
     public function findBySellerId($sellerId)
     {
-        return $this->userReview->where('seller_id', $sellerId)->with('user')->get();
+        return $this->userReview->where('seller_id', $sellerId)->with('user')->latest()->get();
     }
 }

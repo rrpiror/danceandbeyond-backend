@@ -6,8 +6,8 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Condition;
 use App\Nova\FulfillmentOption;
+use App\Nova\ProductShippingServiceProvider;
 use App\Models\User;
-use Dab\TestField\TestField;
 use Laravel\Nova\Fields\BelongsToMany;
 use Laravel\Nova\Fields\Boolean;
 use Laravel\Nova\Fields\HasMany;
@@ -85,6 +85,8 @@ class Product extends Resource
             HasMany::make('Sizes', 'productSizes', ProductSize::class),
 
             BelongsToMany::make('Colours'),
+
+            BelongsToMany::make('Shipping Service Providers', 'shippingServiceProviders', ShippingServiceProvider::class),
         ];
     }
 

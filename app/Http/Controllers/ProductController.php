@@ -39,6 +39,16 @@ class ProductController extends Controller
         }
     }
 
+    public function getProductsByUserId()
+    {
+        try {
+            $products = $this->productService->getProductsByUserId();
+            return apiResponse(true, $products);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
     // Get all favourite products
     public function favouriteProducts()
     {

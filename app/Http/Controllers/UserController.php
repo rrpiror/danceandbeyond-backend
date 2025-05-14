@@ -135,4 +135,44 @@ class UserController extends Controller
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
         }
     }
+
+    public function getProfile()
+    {
+        try {
+            $profile = $this->userService->getProfile();
+            return apiResponse(true, $profile);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function updateProfile(Request $request)
+    {
+        try {
+            $rules = [
+                'name' => 'required',
+                'type' => 'required|in:school,individual',
+                'address' => 'required',
+                'school' => 'required_if:type,school',
+                'school.name' => 'required_if:type,school',
+                'school.website' => 'required_if:type,school|url',
+                'address.*.house_number' => 'required',
+                'address.*.street' => 'required',
+                'address.*.city' => 'required',
+                'address.*.postcode' => ['required', 'regex:/^([Gg][Ii][Rr] 0[Aa]{2})|((([A-Za-z][0-9]{1,2})|(([A-Za-z][A-Ha-hJ-Yj-y][0-9]{1,2})|(([A-Za-z][0-9][A-Za-z])|([A-Za-z][A-Ha-hJ-Yj-y][0-9][A-Za-z]?))))\s?[0-9][A-Za-z]{2})$/'],
+            ];
+
+            $validation = $this->validationService->validate($request, $rules);
+
+            if ($validation) {
+                return apiResponse(false, $validation, 'Invalid data', 5, 422);
+            }
+
+            $profile = $this->userService->update($request->all());
+            
+            return apiResponse(true, $profile);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
 }

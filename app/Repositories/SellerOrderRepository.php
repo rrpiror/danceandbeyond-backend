@@ -30,6 +30,33 @@ class SellerOrderRepository
 
     public function findByOrderId($orderId)
     {
-        return $this->sellerOrder->with('statuses')->where('order_id', $orderId)->get();
+        return $this->sellerOrder->with('statuses')->where('order_id', $orderId)->latest()->get();
+    }
+
+    public function findSalesProductsBySeller($sellerId)
+    {
+        return $this->sellerOrder
+            ->where('seller_id', $sellerId)
+            ->whereHas('orderItems.product', function ($query) {
+                $query->where('type', 'sale');
+            })
+            ->latest()
+            ->get();
+    }
+
+    public function findHireProductsBySeller($sellerId)
+    {
+        return $this->sellerOrder
+            ->where('seller_id', $sellerId)
+            ->whereHas('orderItems.product', function ($query) {
+                $query->where('type', 'hire');
+            })
+            ->latest()
+            ->get();
+    }
+
+    public function findAllSellerOrders($sellerId)
+    {
+        return $this->sellerOrder->where('seller_id', $sellerId)->latest()->get();
     }
 }

@@ -26,6 +26,7 @@ use Laravel\Nova\Menu\MenuSection;
 use Laravel\Nova\Nova;
 use Laravel\Nova\NovaApplicationServiceProvider;
 use App\Nova\Transaction;
+use App\Nova\ShippingServiceProvider;
 
 class NovaServiceProvider extends NovaApplicationServiceProvider
 {
@@ -58,6 +59,7 @@ class NovaServiceProvider extends NovaApplicationServiceProvider
 				MenuItem::resource(ProductColour::class),
 				MenuItem::resource(ProductFulfillmentOption::class),
 				MenuItem::resource(ProductSize::class),
+				MenuItem::resource(ShippingServiceProvider::class),
 			];
 
 			$transactionsResources = [

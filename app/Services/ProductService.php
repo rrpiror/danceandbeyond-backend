@@ -15,6 +15,8 @@ use App\Repositories\CategoryRepository;
 use App\Repositories\ConditionRepository;
 use App\Repositories\SizeRepository;
 use App\Repositories\FulfillmentOptionRepository;
+use App\Repositories\ServiceProviderRepository;
+use App\Repositories\ColourRepository;
 
 class ProductService
 {
@@ -28,8 +30,10 @@ class ProductService
     protected ConditionRepository $conditionRepository;
     protected SizeRepository $sizeRepository;
     protected FulfillmentOptionRepository $fulfillmentOptionRepository;
+    protected ServiceProviderRepository $serviceProviderRepository;
+    protected ColourRepository $colourRepository;
 
-    public function __construct(ProductRepository $productRepository, ProductFulfillmentOptionRepository $productFulfillmentOptionRepository, ProductSizeRepository $productSizeRepository, HiringDetailRepository $hiringDetailRepository, HiringUnavailabilityDayRepository $hiringUnavailbilityDayRepository, BrandRepository $brandRepository, CategoryRepository $categoryRepository, ConditionRepository $conditionRepository, SizeRepository $sizeRepository, FulfillmentOptionRepository $fulfillmentOptionRepository)
+    public function __construct(ProductRepository $productRepository, ProductFulfillmentOptionRepository $productFulfillmentOptionRepository, ProductSizeRepository $productSizeRepository, HiringDetailRepository $hiringDetailRepository, HiringUnavailabilityDayRepository $hiringUnavailbilityDayRepository, BrandRepository $brandRepository, CategoryRepository $categoryRepository, ConditionRepository $conditionRepository, SizeRepository $sizeRepository, FulfillmentOptionRepository $fulfillmentOptionRepository, ServiceProviderRepository $serviceProviderRepository, ColourRepository $colourRepository)
     {
         $this->productRepository = $productRepository;
         $this->productFulfillmentOptionRepository = $productFulfillmentOptionRepository;
@@ -41,6 +45,8 @@ class ProductService
         $this->conditionRepository = $conditionRepository;
         $this->sizeRepository = $sizeRepository;
         $this->fulfillmentOptionRepository = $fulfillmentOptionRepository;
+        $this->serviceProviderRepository = $serviceProviderRepository;
+        $this->colourRepository = $colourRepository;
     }
 
     public function getAll()
@@ -73,6 +79,16 @@ class ProductService
         return $this->fulfillmentOptionRepository->getAll();
     }
 
+    public function getAllShippingServiceProviders()
+    {
+        return $this->serviceProviderRepository->getAll();
+    }
+
+    public function getAllColours()
+    {
+        return $this->colourRepository->getAll();
+    }
+
     public function findById($id)
     {
         $product = $this->productRepository->findById($id);
@@ -100,6 +116,10 @@ class ProductService
                 $product->sizes()->sync($data['sizes']);
             }
 
+            if (isset($data['colours'])) {
+                $product->colours()->sync($data['colours']);
+            }
+
             if ($data['type'] == 'hire') {
                 if (isset($data['hiring_details'])) {
                     $data['hiring_details']['product_id'] = $product->id;
@@ -114,8 +134,26 @@ class ProductService
                 }
             }
 
+            if (isset($data['shipping_service_providers'])) {
+                $product->shippingServiceProviders()->sync($data['shipping_service_providers']);
+            }
+
+            if (isset($data['images']) && is_array($data['images'])) {
+                foreach ($data['images'] as $base64Image) {
+                    $imageType = explode(';', $base64Image)[0];
+                    $imageType = explode('/', $imageType)[1];
+
+                    if (!in_array(strtolower($imageType), ['jpg', 'jpeg', 'png'])) {
+                        throw new Exception('Invalid image type. Only JPG, JPEG and PNG are allowed.', 422);
+                    }
+
+                    $product->addMediaFromBase64($base64Image)
+                        ->toMediaCollection('images');
+                }
+            }
+
             DB::commit();
-            return $product;
+            return $product->load('brand', 'category', 'condition', 'productSizes.size', 'colours', 'fulfillmentOptions', 'hiringDetail.unavailabilityDays', 'media');
         } catch (\Exception $e) {
             DB::rollback();
             throw $e;
@@ -143,6 +181,10 @@ class ProductService
                 $product->sizes()->sync($data['sizes']);
             }
 
+            if (isset($data['colours'])) {
+                $product->colours()->sync($data['colours']);
+            }
+
             if ($data['type'] == 'hire') {
                 if (isset($data['hiring_details'])) {
                     $data['hiring_details']['product_id'] = $product->id;
@@ -156,6 +198,10 @@ class ProductService
                         );
                     }
                 }
+            }
+
+            if (isset($data['shipping_service_providers'])) {
+                $product->shippingServiceProviders()->sync($data['shipping_service_providers']);
             }
 
             DB::commit();
@@ -199,5 +245,11 @@ class ProductService
         $product->delete();
 
         return true;
+    }
+
+    public function getProductsByUserId()
+    {
+        $user = Auth::user();
+        return $this->productRepository->findProductsByUserId($user->id);
     }
 }

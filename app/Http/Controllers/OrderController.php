@@ -53,4 +53,14 @@ class OrderController extends Controller
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, $ex->getCode() ?? 500);
         }
     }
+
+    public function getSellerInfo()
+    {
+        try {
+            $sellerInfo = $this->orderService->getSellerInfo();
+            return apiResponse(true, $sellerInfo, "Seller info retrieved successfully");
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
 }

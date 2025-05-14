@@ -35,9 +35,10 @@ class User extends Authenticatable implements HasMedia
         'remember_token',
     ];
 
-		public function products() {
-			return $this->hasMany(Product::class);
-		}
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
 
     public function address()
     {
@@ -64,10 +65,10 @@ class User extends Authenticatable implements HasMedia
         return $this->hasMany(UserReview::class);
     }
 
-		public function reviewsReceived()
-		{
-				return $this->hasManyThrough(ProductReview::class, Product::class);
-		}
+    public function reviewsReceived()
+    {
+        return $this->hasManyThrough(ProductReview::class, Product::class);
+    }
 
     public function registerMediaCollections(): void
     {
