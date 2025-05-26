@@ -27,4 +27,9 @@ class UserRepository
     {
         return $this->user->create($data);
     }
+
+    public function findByResetPasswordToken($token)
+    {
+        return $this->user->where('reset_password_token', $token)->first();
+    }
 }

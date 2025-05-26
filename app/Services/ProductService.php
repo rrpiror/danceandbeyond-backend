@@ -17,6 +17,7 @@ use App\Repositories\SizeRepository;
 use App\Repositories\FulfillmentOptionRepository;
 use App\Repositories\ServiceProviderRepository;
 use App\Repositories\ColourRepository;
+use App\Services\PaymentService;
 
 class ProductService
 {
@@ -32,8 +33,9 @@ class ProductService
     protected FulfillmentOptionRepository $fulfillmentOptionRepository;
     protected ServiceProviderRepository $serviceProviderRepository;
     protected ColourRepository $colourRepository;
+    protected PaymentService $paymentService;
 
-    public function __construct(ProductRepository $productRepository, ProductFulfillmentOptionRepository $productFulfillmentOptionRepository, ProductSizeRepository $productSizeRepository, HiringDetailRepository $hiringDetailRepository, HiringUnavailabilityDayRepository $hiringUnavailbilityDayRepository, BrandRepository $brandRepository, CategoryRepository $categoryRepository, ConditionRepository $conditionRepository, SizeRepository $sizeRepository, FulfillmentOptionRepository $fulfillmentOptionRepository, ServiceProviderRepository $serviceProviderRepository, ColourRepository $colourRepository)
+    public function __construct(ProductRepository $productRepository, ProductFulfillmentOptionRepository $productFulfillmentOptionRepository, ProductSizeRepository $productSizeRepository, HiringDetailRepository $hiringDetailRepository, HiringUnavailabilityDayRepository $hiringUnavailbilityDayRepository, BrandRepository $brandRepository, CategoryRepository $categoryRepository, ConditionRepository $conditionRepository, SizeRepository $sizeRepository, FulfillmentOptionRepository $fulfillmentOptionRepository, ServiceProviderRepository $serviceProviderRepository, ColourRepository $colourRepository, PaymentService $paymentService)
     {
         $this->productRepository = $productRepository;
         $this->productFulfillmentOptionRepository = $productFulfillmentOptionRepository;
@@ -47,11 +49,7 @@ class ProductService
         $this->fulfillmentOptionRepository = $fulfillmentOptionRepository;
         $this->serviceProviderRepository = $serviceProviderRepository;
         $this->colourRepository = $colourRepository;
-    }
-
-    public function getAll()
-    {
-        return $this->productRepository->getAll();
+        $this->paymentService = $paymentService;
     }
 
     public function getAllBrands()
@@ -89,6 +87,12 @@ class ProductService
         return $this->colourRepository->getAll();
     }
 
+    public function getAll(array $data)
+    {
+        return $this->productRepository->findByFilters($data);
+
+    }
+
     public function findById($id)
     {
         $product = $this->productRepository->findById($id);
@@ -107,6 +111,8 @@ class ProductService
             DB::beginTransaction();
 
             $product = $this->productRepository->create($data);
+            
+            unset($product->is_favourite);
 
             if (isset($data['fulfillment_options'])) {
                 $product->fulfillmentOptions()->sync($data['fulfillment_options']);
@@ -153,7 +159,7 @@ class ProductService
             }
 
             DB::commit();
-            return $product->load('brand', 'category', 'condition', 'productSizes.size', 'colours', 'fulfillmentOptions', 'hiringDetail.unavailabilityDays', 'media');
+            return $product->load($this->productRepository->productRelationAttributes);
         } catch (\Exception $e) {
             DB::rollback();
             throw $e;
@@ -166,6 +172,7 @@ class ProductService
             DB::beginTransaction();
 
             $product = $this->productRepository->findById($id);
+            unset($product->is_favourite);
 
             if (!$product) {
                 throw new Exception('Product not found.', 404);
@@ -204,7 +211,22 @@ class ProductService
                 $product->shippingServiceProviders()->sync($data['shipping_service_providers']);
             }
 
+            if (isset($data['images']) && is_array($data['images'])) {
+                foreach ($data['images'] as $base64Image) {
+                    $imageType = explode(';', $base64Image)[0];
+                    $imageType = explode('/', $imageType)[1];
+
+                    if (!in_array(strtolower($imageType), ['jpg', 'jpeg', 'png'])) {
+                        throw new Exception('Invalid image type. Only JPG, JPEG and PNG are allowed.', 422);
+                    }
+
+                    $product->addMediaFromBase64($base64Image)
+                        ->toMediaCollection('images');
+                }
+            }
+
             DB::commit();
+            $product = $this->productRepository->findById($id);
             return $product;
         } catch (\Exception $e) {
             DB::rollback();
@@ -229,7 +251,7 @@ class ProductService
     public function getFavouriteProducts()
     {
         $user = Auth::user();
-        return $user->favouriteProducts;
+        return $user->favouriteProducts->load('media');
     }
 
     public function delete($id)
@@ -251,5 +273,18 @@ class ProductService
     {
         $user = Auth::user();
         return $this->productRepository->findProductsByUserId($user->id);
+    }
+
+    public function featureThisItem($id)
+    {
+        $product = $this->productRepository->findById($id);
+
+        if ($product->is_featured == 0) {
+            throw new Exception('Product is not featured.', 400);
+        }
+
+        $url = $this->paymentService->createFeatureItemPaymentIntent($product->toArray());
+
+        return $url;
     }
 }

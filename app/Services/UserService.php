@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\ForgotPasswordLink;
 use App\Repositories\AddressRepository;
 use App\Repositories\UserAddressRepository;
 use App\Repositories\UserRepository;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Hash;
 use Stripe\Account;
 use Stripe\AccountLink;
 use Stripe\Customer;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
 
 class UserService
 {
@@ -149,6 +152,74 @@ class UserService
         } catch (Exception $ex) {
             throw new Exception($ex->getMessage(), 422);
         }
+    }
+
+    public function changePassword(array $data)
+    {
+        $user = $this->userRepository->findById(Auth::user()->id);
+
+        if (!Hash::check($data['old_password'], $user->password)) {
+            throw new Exception('Old password is incorrect.', 400);
+        }
+
+        $user->password = Hash::make($data['password']);
+        $user->save();
+
+        return $user;
+    }
+
+    public function deleteAccount()
+    {
+        $user = $this->userRepository->findById(Auth::user()->id);
+        $user->delete();
+        return true;
+    }
+
+    public function sendForgotPasswordLink(string $email)
+    {
+        $user = $this->userRepository->findByEmail($email);
+        if (!$user) {
+            throw new Exception('User not found.', 404);
+        }
+
+        $token = Str::random(60);
+        $user->reset_password_token = $token;
+        $user->reset_password_token_at = now()->addDay(1);
+        $user->save();
+
+        Mail::to($user->email)->send(new ForgotPasswordLink($token));
+
+        return $user;
+    }
+
+    public function validateResetPasswordToken(string $token)
+    {
+        $user = $this->userRepository->findByResetPasswordToken($token);
+        if (!$user) {
+            throw new Exception('Invalid token.', 400);
+        }
+
+        if ($user->reset_password_token_at < now()) {
+            throw new Exception('Token expired.', 400);
+        }
+
+        return $user;
+    }
+
+    public function resetPassword(string $token, string $password)
+    {
+
+        $user = $this->userRepository->findByResetPasswordToken($token);
+        if (!$user) {
+            throw new Exception('Invalid token.', 400);
+        }
+
+        $user->password = Hash::make($password);
+        $user->reset_password_token = null;
+        $user->reset_password_token_at = null;
+        $user->save();
+
+        return $user;
     }
 
     public function update(array $data)

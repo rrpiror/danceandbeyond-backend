@@ -29,10 +29,10 @@ class ProductController extends Controller
         $this->validationService = $validationService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $products = $this->productService->getAll();
+            $products = $this->productService->getAll($request->all());
             return apiResponse(true, $products);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
@@ -151,6 +151,16 @@ class ProductController extends Controller
 
             $this->productService->delete($id);
             return apiResponse(true, null);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function featureThisItem($id)
+    {
+        try {
+            $url = $this->productService->featureThisItem($id);
+            return apiResponse(true, $url);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
         }

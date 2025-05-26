@@ -169,8 +169,104 @@ class UserController extends Controller
             }
 
             $profile = $this->userService->update($request->all());
-            
+
             return apiResponse(true, $profile);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function changePassword(Request $request)
+    {
+        try {
+            $rules = [
+                'old_password' => 'required',
+                'password' => 'required',
+            ];
+
+            $validation = $this->validationService->validate($request, $rules);
+
+            if ($validation) {
+                return apiResponse(false, $validation, 'Invalid data', 5, 422);
+            }
+
+            $password = $this->userService->changePassword($request->all());
+
+            return apiResponse(true, $password, 'Password changed successfully');
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function sendForgotPasswordLink(Request $request)
+    {
+        try {
+            $rules = [
+                'email' => 'required|email',
+            ];
+
+            $validation = $this->validationService->validate($request, $rules);
+
+            if ($validation) {
+                return apiResponse(false, $validation, 'Invalid data', 5, 422);
+            }
+
+            $user = $this->userService->sendForgotPasswordLink($request->email);
+
+            return apiResponse(true, $user);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function validateResetPasswordToken(Request $request)
+    {
+        try {
+            $rules = [
+                'token' => 'required',
+            ];
+
+            $validation = $this->validationService->validate($request, $rules);
+
+            if ($validation) {
+                return apiResponse(false, $validation, 'Invalid data', 5, 422);
+            }
+
+            $user = $this->userService->validateResetPasswordToken($request->token);
+
+            return apiResponse(true, $user);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function resetPassword(Request $request)
+    {
+        try {
+            $rules = [
+                'token' => 'required',
+                'password' => 'required',
+            ];
+
+            $validation = $this->validationService->validate($request, $rules);
+
+            if ($validation) {
+                return apiResponse(false, $validation, 'Invalid data', 5, 422);
+            }
+
+            $user = $this->userService->resetPassword($request->token, $request->password);
+
+            return apiResponse(true, $user);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function deleteAccount()
+    {
+        try {
+            $user = $this->userService->deleteAccount();
+            return apiResponse(true, 'Account deleted successfully');
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
         }

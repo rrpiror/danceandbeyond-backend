@@ -66,4 +66,38 @@ class PaymentService
 
         return $session->url;
     }
+
+    public function createFeatureItemPaymentIntent(array $data)
+    {
+        $user = Auth::user();
+
+        $session = Session::create([
+            'payment_method_types' => ['card'],
+            'mode' => 'payment',
+            'customer' => $user->stripe_customer_id,
+            'line_items' => [[
+                'price_data' => [
+                    'currency' => env('CASHIER_CURRENCY', 'gbp'),
+                    'product_data' => [
+                        'name' => $data['name'],
+                        'metadata' => [
+                            'product_id' => $data['id'],
+                        ]
+                    ],
+                    'unit_amount' => env('FEATURED_ITEM_PRICE', 1000),
+                ],
+                'quantity' => 1,
+            ]],
+            'success_url' => "https://www.example.com",
+            'cancel_url' => "https://www.example.com",
+            'payment_intent_data' => [
+                'metadata' => [
+                    'product_id' => $data['id'],
+                    'user_id' => $user->id,
+                ]
+            ],
+        ]);
+
+        return $session->url;
+    }
 }

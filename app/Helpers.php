@@ -1,8 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
-
 if (!function_exists('apiResponse')) {
     function apiResponse($result = true, $data = null, $message = null, $errorCode = null, $statusCode = 200): \Illuminate\Http\JsonResponse
     {
