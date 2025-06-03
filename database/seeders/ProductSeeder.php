@@ -53,8 +53,7 @@ class ProductSeeder extends Seeder
             'Versatile piece for various dance styles.',
         ];
         
-        // Create 50 products
-        for ($i = 1; $i <= 50; $i++) {
+        for ($i = 1; $i <= 10; $i++) {
             $user = $users->random();
             $brand = $brands->random();
             $category = $categories->random();
@@ -66,7 +65,7 @@ class ProductSeeder extends Seeder
             $type = rand(0, 1) === 0 ? 'sale' : 'hire';
             $isFeatured = rand(0, 10) === 0; // 10% chance of being featured
             
-            Product::create([
+            $product =Product::create([
                 'user_id' => $user->id,
                 'brand_id' => $brand->id,
                 'category_id' => $category->id,
@@ -77,6 +76,29 @@ class ProductSeeder extends Seeder
                 'type' => $type,
                 'is_featured' => $isFeatured,
             ]);
+            
+
+            $unsplashImages = [
+                'https://plus.unsplash.com/premium_photo-1714226830923-03396831c4f0?q=80&w=3540&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://plus.unsplash.com/premium_photo-1675186049419-d48f4b28fe7c?q=80&w=3687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=3220&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=3604&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=3542&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://images.unsplash.com/photo-1564584217132-2271feaeb3c5?q=80&w=3540&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?q=80&w=3472&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://plus.unsplash.com/premium_photo-1673125287084-e90996bad505?q=80&w=3648&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://plus.unsplash.com/premium_photo-1675186049409-f9f8f60ebb5e?q=80&w=3687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://images.unsplash.com/photo-1467043237213-65f2da53396f?q=80&w=2134&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://plus.unsplash.com/premium_photo-1675186049419-d48f4b28fe7c?q=80&w=3687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=3220&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+            ];
+
+            //add 3 random images to the product from unsplash
+            for ($j = 0; $j < 3; $j++) {
+                $product->addMediaFromUrl($unsplashImages[array_rand($unsplashImages)])
+                    ->usingFileName(uniqid() . '.jpg')
+                    ->toMediaCollection('images');
+            }
         }
     }
 } 

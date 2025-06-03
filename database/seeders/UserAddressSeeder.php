@@ -20,12 +20,11 @@ class UserAddressSeeder extends Seeder
         $types = ['shipping', 'billing'];
 
         foreach ($users as $user) {
-            // Each user gets 1-2 addresses
-            $numAddresses = rand(1, 2);
+            // Each user gets 2 addresses 1 shipping and 1 billing
             
-            for ($i = 0; $i < $numAddresses; $i++) {
+            for ($i = 0; $i < 2; $i++) {
                 $addressId = $addresses[rand(0, $addressCount - 1)]->id;
-                $type = $types[array_rand($types)];
+                $type = $types[$i];
                 
                 // Check if this user-address combination already exists
                 $exists = UserAddress::where('user_id', $user->id)

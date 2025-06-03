@@ -37,6 +37,16 @@ class OrderController extends Controller
         }
     }
 
+    public function show($id)
+    {
+        try {
+            $order = $this->orderService->findById($id);
+            return apiResponse(true, $order, "Order retrieved successfully");
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, $ex->getCode() ?? 500);
+        }
+    }
+
     public function store(Request $request)
     {
         try {

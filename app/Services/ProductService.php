@@ -154,6 +154,7 @@ class ProductService
                     }
 
                     $product->addMediaFromBase64($base64Image)
+                        ->usingFileName(uniqid() . '.' . $imageType)
                         ->toMediaCollection('images');
                 }
             }
@@ -221,6 +222,7 @@ class ProductService
                     }
 
                     $product->addMediaFromBase64($base64Image)
+                        ->usingFileName(uniqid() . '.' . $imageType)
                         ->toMediaCollection('images');
                 }
             }

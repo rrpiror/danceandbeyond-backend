@@ -62,7 +62,12 @@ class OrderService
      */
     public function getAll()
     {
-        return $this->orderRepository->getAll()->load(['sellerOrders.statuses', 'orderItems.product']);
+        return $this->orderRepository->getAll();
+    }
+
+    public function findById($id)
+    {
+        return $this->orderRepository->findById($id);
     }
 
     /**
@@ -116,9 +121,15 @@ class OrderService
             $products = $this->productRepository->findByIds($productIds)->keyBy('id');
 
             // Store billing and shipping addresses
-            $data['addresses'] = json_encode(
-                $this->addressRepository->findAddressesByIds([$data['billing_address_id'], $data['shipping_address_id']])
-            );
+            $billingAddress = $this->addressRepository->findById($data['billing_address_id']);
+            $shippingAddress = $this->addressRepository->findById($data['shipping_address_id']);
+            if($billingAddress) {
+                $data['addresses']['billing'] = $billingAddress;
+            }
+            if($shippingAddress) {
+                $data['addresses']['shipping'] = $shippingAddress;
+            }
+            $data['addresses'] = json_encode($data['addresses']);
 
             // Calculate total amount and prepare items for payment
             $itemsCollection = collect($data['items']);
