@@ -228,13 +228,15 @@ class OrderService
         foreach ($items as $item) {
             $product = $products[$item['product_id']];
 
+            $product_snapshot = $this->createProductSnapshot($item);
+
             // Create order item with product details
             $orderItem = $this->orderItemRepository->create([
                 'seller_order_id' => $sellerOrder->id,
                 'product_id' => $product->id,
                 'quantity' => $item['quantity'],
                 'price' => $product->price,
-                'product_snapshot' => json_encode($product)
+                'product_snapshot' => json_encode($product_snapshot)
             ]);
 
             // Attach size if specified
@@ -242,6 +244,74 @@ class OrderService
                 $orderItem->sizes()->sync($item['size_id']);
             }
         }
+    }
+
+    private function createProductSnapshot($item)
+    {
+        $product = $item['product_snapshot'];
+        $isHire = $product->type === 'hire';
+        $sizes = $item['sizes'];
+        $colours = $item['colours'];
+        
+        $product_snapshot = [
+            'id' => $product->id,
+            'name' => $product->name,
+            'description' => $product->description,
+            'price' => $product->price,
+            'type' => $product->type,
+            'media' => $product->media->map(function ($media) {
+                return [
+                    'id' => $media->id,
+                    'model_type' => $media->model_type,
+                    'model_id' => $media->model_id,
+                    'uuid' => $media->uuid,
+                    'collection_name' => $media->collection_name,
+                    'name' => $media->name,
+                    'file_name' => $media->file_name,
+                    'mime_type' => $media->mime_type,
+                    'disk' => $media->disk,
+                    'conversions_disk' => $media->conversions_disk,
+                    'size' => $media->size,
+                    'manipulations' => $media->manipulations,
+                    'custom_properties' => $media->custom_properties,
+                    'generated_conversions' => $media->generated_conversions,
+                    'responsive_images' => $media->responsive_images,
+                    'order_column' => $media->order_column,
+                    'created_at' => $media->created_at,
+                    'updated_at' => $media->updated_at,
+                    'original_url' => $media->getUrl(),
+                    'preview_url' => $media->getUrl(),
+                ];
+            })->toArray(),
+            'brand' => [
+                'id' => $product->brand_id,
+                'name' => $product->brand ? $product->brand->name : null,
+            ],
+            'category' => [
+                'id' => $product->category_id,
+                'name' => $product->category ? $product->category->name : null,
+            ],
+            'condition' => [
+                'id' => $product->condition_id,
+                'name' => $product->condition ? $product->condition->name : null,
+            ],
+        ];
+
+        if ($isHire && $product->hiringDetail) {
+            //TODO: get hiring days from request
+            $days = rand($product->hiringDetail->min_hire_days, 10);
+
+            $product_snapshot['hiring_details'] = [
+                'days' => $days,
+                ...$product->hiringDetail->toArray(),
+            ];
+        }
+
+        $product_snapshot['sizes'] = $sizes;
+
+        $product_snapshot['colour'] = $colours;
+
+        return $product_snapshot;
     }
 
     public function getSellerInfo()
@@ -260,5 +330,59 @@ class OrderService
             'income' => $income,
             'commission' => $commission
         ];
+    }
+
+    public function getSellerOrders()
+    {
+        $user = Auth::user();
+        $orders = $this->sellerOrderRepository->findAllSellerOrders($user->id);
+        return $orders;
+    }
+
+    public function getSellerOrderById($id)
+    {
+        return $this->sellerOrderRepository->findById($id);
+    }
+
+    /**
+     * Get all available order statuses
+     * @return Collection
+     */
+    public function getAllOrderStatuses()
+    {
+        return $this->orderStatusRepository->getAll();
+    }
+
+    /**
+     * Add a status to a seller order
+     * @param int $sellerOrderId Seller order ID
+     * @param int $statusId Status ID to add
+     * @return SellerOrder
+     * @throws Exception
+     */
+    public function addStatusToSellerOrder($sellerOrderId, $statusId)
+    {
+        try {
+            $sellerOrder = $this->sellerOrderRepository->findByIdRaw($sellerOrderId);
+            
+            if (!$sellerOrder) {
+                throw new Exception('Seller order not found.', 404);
+            }
+
+            $status = $this->orderStatusRepository->findById($statusId);
+            
+            if (!$status) {
+                throw new Exception('Status not found.', 404);
+            }
+
+            // Check if status is already attached
+            if (!$sellerOrder->statuses()->where('order_status_id', $statusId)->exists()) {
+                $sellerOrder->statuses()->attach($statusId);
+            }
+
+            return $this->sellerOrderRepository->findById($sellerOrderId);
+        } catch (Exception $ex) {
+            throw new Exception($ex->getMessage(), $ex->getCode() ?? 500);
+        }
     }
 }

@@ -38,10 +38,10 @@ class DatabaseSeeder extends Seeder
             
             // Orders and related
             PaymentMethodSeeder::class,
-            OrderSeeder::class,
-            OrderItemSeeder::class,
+            OrderStatusSeeder::class,
             OrderItemColourSeeder::class,
             OrderItemSizeSeeder::class,
+            OrderSeeder::class,
             ShippingServiceProviderSeeder::class,
             
             // Communication
@@ -51,8 +51,6 @@ class DatabaseSeeder extends Seeder
             NotificationSeeder::class,
             UserReviewSeeder::class,
             ProductReviewSeeder::class,
-
-            OrderStatusSeeder::class,
         ]);
     }
 }

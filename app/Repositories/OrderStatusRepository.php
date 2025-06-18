@@ -22,4 +22,14 @@ class OrderStatusRepository
     {
         return $this->orderStatus->create($data);
     }
+
+    public function getAll()
+    {
+        return $this->orderStatus->all();
+    }
+
+    public function findById($id)
+    {
+        return $this->orderStatus->find($id);
+    }
 }

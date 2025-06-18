@@ -12,6 +12,12 @@ class OrderItemSize extends Model
 
     protected $fillable = [
         'order_item_id',
-        'size_id'
+        'size_id',
+        'quantity'
     ];
+
+    public function size()
+    {
+        return $this->belongsTo(Size::class);
+    }
 }

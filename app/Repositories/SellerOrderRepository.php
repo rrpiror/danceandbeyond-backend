@@ -3,6 +3,8 @@
 namespace App\Repositories;
 
 use App\Models\SellerOrder;
+use App\Http\Resources\SellerOrderResource;
+use App\Http\Resources\SellerOrderCollectionResource;
 
 class SellerOrderRepository
 {
@@ -22,12 +24,6 @@ class SellerOrderRepository
     {
         return $this->sellerOrder->with('seller')->where('created_at', '<=', now()->subDays(14))->whereNull('transferred_at')->where('status', 'completed')->get();
     }
-
-    public function findById($id)
-    {
-        return $this->sellerOrder->find($id);
-    }
-
     public function findByOrderId($orderId)
     {
         return $this->sellerOrder->with('statuses')->where('order_id', $orderId)->latest()->get();
@@ -57,6 +53,34 @@ class SellerOrderRepository
 
     public function findAllSellerOrders($sellerId)
     {
-        return $this->sellerOrder->where('seller_id', $sellerId)->latest()->get();
+        $sellerOrders = $this->sellerOrder->where('seller_id', $sellerId)->latest()->get()->load([
+            'orderItems',
+            'orderItems.sizes',
+            'order',
+            'order.user:id,name,email,phone_number',
+            'seller:id,name,email,phone_number',
+            'statuses',
+        ]);
+        
+        return new SellerOrderCollectionResource($sellerOrders);
+    }
+
+    public function findById($id)
+    {
+        $sellerOrder = $this->sellerOrder->find($id)->load([
+            'orderItems',
+            'orderItems.sizes',
+            'order',
+            'order.user:id,name,email,phone_number',
+            'seller:id,name,email,phone_number',
+            'statuses',
+        ]);
+        
+        return new SellerOrderResource($sellerOrder);
+    }
+
+    public function findByIdRaw($id)
+    {
+        return $this->sellerOrder->find($id);
     }
 }

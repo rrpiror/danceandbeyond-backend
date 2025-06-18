@@ -14,4 +14,9 @@ class OrderItemColour extends Model
         'order_item_id',
         'colour_id'
     ];
+
+    public function colour()
+    {
+        return $this->belongsTo(Colour::class);
+    }
 }

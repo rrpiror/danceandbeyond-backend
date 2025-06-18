@@ -62,6 +62,7 @@ class UserController extends Controller
             $rules = [
                 'name' => 'required',
                 'email' => 'required|email',
+                'phone_number' => 'required|string|max:20',
                 'password' => 'required',
                 'type' => 'required|in:school,individual',
                 'address' => 'required',
@@ -151,6 +152,7 @@ class UserController extends Controller
         try {
             $rules = [
                 'name' => 'required',
+                'phone_number' => 'required|string|max:20',
                 'type' => 'required|in:school,individual',
                 'address' => 'required',
                 'school' => 'required_if:type,school',

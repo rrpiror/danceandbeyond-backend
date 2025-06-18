@@ -41,4 +41,14 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    /**
+     * Indicate that the user is a seller with Stripe seller ID.
+     */
+    public function seller(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'stripe_seller_id' => 'acct_' . Str::random(16),
+        ]);
+    }
 }

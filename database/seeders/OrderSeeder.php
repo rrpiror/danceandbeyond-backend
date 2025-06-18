@@ -4,8 +4,14 @@ namespace Database\Seeders;
 
 use App\Models\Address;
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\OrderStatus;
 use App\Models\PaymentMethod;
+use App\Models\Product;
+use App\Models\SellerOrder;
 use App\Models\User;
+use App\Models\Colour;
+use App\Models\Size;
 use Illuminate\Database\Seeder;
 
 class OrderSeeder extends Seeder
@@ -18,6 +24,10 @@ class OrderSeeder extends Seeder
         $users = User::all();
         $addresses = Address::all();
         $paymentMethods = PaymentMethod::all();
+        $products = Product::with('media')->get();
+        $orderStatuses = OrderStatus::all();
+        $sizes = Size::all();
+        $colours = Colour::all();
         
         // Create 20 orders
         for ($i = 1; $i <= 20; $i++) {
@@ -50,14 +60,143 @@ class OrderSeeder extends Seeder
                 ],
             ]);
             
-            Order::create([
+            // Create order with initial amount 0
+            $order = Order::create([
                 'user_id' => $user->id,
                 'payment_method_id' => $paymentMethod->id,
-                'amount' => 0, // Will be updated after adding order items
+                'amount' => 0,
                 'addresses' => $addressesJson,
                 'created_at' => $date,
                 'updated_at' => $date,
             ]);
+
+            // Create order items and seller orders
+            $this->createOrderItems($order, $products, $orderStatuses, $sizes, $colours);
         }
+    }
+
+    private function createOrderItems($order, $products, $orderStatuses, $sizes, $colours)
+    {
+        // Each order gets 1-3 items
+        $numItems = rand(1, 3);
+        $usedProductIds = [];
+        $sellerOrders = [];
+        $totalOrderAmount = 0;
+
+        for ($i = 0; $i < $numItems; $i++) {
+            // Get a random product that hasn't been used for this order yet
+            do {
+                $product = $products->random();
+            } while (in_array($product->id, $usedProductIds));
+
+            $usedProductIds[] = $product->id;
+            $sellerId = $product->user_id;
+
+            // Check if we already created a seller order for this seller, otherwise create one
+            if (!isset($sellerOrders[$sellerId])) {
+                $sellerOrders[$sellerId] = SellerOrder::create([
+                    'order_id' => $order->id,
+                    'seller_id' => $sellerId,
+                    'amount' => 0,
+                    'transferred_at' => rand(0, 1) ? now()->subDays(rand(1, 30)) : null,
+                ]);
+
+                // Attach random order statuses to seller order
+                if ($orderStatuses->isNotEmpty()) {
+                    $randomStatuses = $orderStatuses->random(rand(1, 3));
+                    $sellerOrders[$sellerId]->statuses()->attach($randomStatuses->pluck('id'));
+                }
+            }
+
+            $sellerOrder = $sellerOrders[$sellerId];
+
+            $quantity = rand(1, 6);
+            $isHire = $product->type === 'hire';
+
+            // Create product snapshot
+            $productSnapshot = [
+                'id' => $product->id,
+                'name' => $product->name,
+                'description' => $product->description,
+                'price' => $product->price,
+                'type' => $product->type,
+                'media' => $product->media->map(function ($media) {
+                    return [
+                        'id' => $media->id,
+                        'model_type' => $media->model_type,
+                        'model_id' => $media->model_id,
+                        'uuid' => $media->uuid,
+                        'collection_name' => $media->collection_name,
+                        'name' => $media->name,
+                        'file_name' => $media->file_name,
+                        'mime_type' => $media->mime_type,
+                        'disk' => $media->disk,
+                        'conversions_disk' => $media->conversions_disk,
+                        'size' => $media->size,
+                        'manipulations' => $media->manipulations,
+                        'custom_properties' => $media->custom_properties,
+                        'generated_conversions' => $media->generated_conversions,
+                        'responsive_images' => $media->responsive_images,
+                        'order_column' => $media->order_column,
+                        'created_at' => $media->created_at,
+                        'updated_at' => $media->updated_at,
+                        'original_url' => $media->getUrl(),
+                        'preview_url' => $media->getUrl(),
+                    ];
+                })->toArray(),
+                'brand' => [
+                    'id' => $product->brand_id,
+                    'name' => $product->brand ? $product->brand->name : null,
+                ],
+                'category' => [
+                    'id' => $product->category_id,
+                    'name' => $product->category ? $product->category->name : null,
+                ],
+                'condition' => [
+                    'id' => $product->condition_id,
+                    'name' => $product->condition ? $product->condition->name : null,
+                ],
+            ];
+
+            if ($isHire && $product->hiringDetail) {
+                $days = rand($product->hiringDetail->min_hire_days, 10);
+
+                $productSnapshot['hiring_details'] = [
+                    'days' => $days,
+                    ...$product->hiringDetail->toArray(),
+                ];
+            }
+
+            $productSnapshot['sizes'] = $sizes->random(3)->map(function ($size) {
+                return [
+                    'id' => $size->id,
+                    'name' => $size->name,
+                    'quantity' => rand(1, 3),
+                ];
+            });
+
+            $productSnapshot['colour'] = $colours->random();
+            
+            $price = $product->price;
+            $totalItemPrice = $price * $quantity;
+
+            // Create Order Item
+            OrderItem::create([
+                'seller_order_id' => $sellerOrder->id,
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+                'price' => $price,
+                'product_snapshot' => json_encode($productSnapshot),
+            ]);
+
+            // Update seller order amount
+            $sellerOrder->increment('amount', $totalItemPrice);
+            
+            // Add to total order amount
+            $totalOrderAmount += $totalItemPrice;
+        }
+
+        // Update the main order with the calculated total amount
+        $order->update(['amount' => $totalOrderAmount]);
     }
 } 

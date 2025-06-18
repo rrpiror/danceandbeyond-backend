@@ -33,4 +33,9 @@ class Order extends Model
     {
         return $this->hasManyThrough(OrderItem::class, SellerOrder::class);
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

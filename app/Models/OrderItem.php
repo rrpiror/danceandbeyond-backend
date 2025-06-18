@@ -18,6 +18,10 @@ class OrderItem extends Model
         'product_snapshot'
     ];
 
+    protected $casts = [
+        'product_snapshot' => 'json',
+    ];
+
     public function sellerOrder()
     {
         return $this->belongsTo(SellerOrder::class);
@@ -30,13 +34,22 @@ class OrderItem extends Model
 
     public function orderItemSizes()
     {
-        return $this->hasOne(OrderItemSize::class);
+        return $this->hasMany(OrderItemSize::class);
+    }
+
+    public function orderItemColours()
+    {
+        return $this->hasMany(OrderItemColour::class);
     }
 
     public function sizes()
     {
         return $this->belongsToMany(Size::class, 'order_item_sizes', 'order_item_id', 'size_id')
-            ->withPivot(['quantity', 'price', 'product_snapshot'])
-            ->withTimestamps();
+            ->withPivot(['quantity']);
+    }
+
+    public function colour()
+    {
+        return $this->hasOneThrough(Colour::class, OrderItemColour::class, 'order_item_id', 'id', 'id', 'colour_id');
     }
 }

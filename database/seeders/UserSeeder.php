@@ -18,6 +18,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Admin User',
             'email' => 'test@test.test',
+            'phone_number' => '+1234567890',
             'email_verified' => true,
             'password' => Hash::make('password'),
             'remember_token' => Str::random(10),
@@ -30,6 +31,7 @@ class UserSeeder extends Seeder
             User::create([
                 'name' => "Dance School $i",
                 'email' => "school$i@example.com",
+                'phone_number' => '+44123456' . str_pad($i, 3, '0', STR_PAD_LEFT),
                 'email_verified' => true,
                 'password' => Hash::make('password'),
                 'remember_token' => Str::random(10),
@@ -43,6 +45,7 @@ class UserSeeder extends Seeder
             User::create([
                 'name' => "User $i",
                 'email' => "user$i@example.com",
+                'phone_number' => '+1555' . str_pad($i, 6, '0', STR_PAD_LEFT),
                 'email_verified' => true,
                 'password' => Hash::make('password'),
                 'remember_token' => Str::random(10),

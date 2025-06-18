@@ -25,11 +25,16 @@ class SellerOrder extends Model
 
     public function seller()
     {
-        return $this->belongsTo(User::class, 'id', 'seller_id');
+        return $this->belongsTo(User::class, 'seller_id', 'id');
     }
 
     public function statuses()
     {
         return $this->belongsToMany(OrderStatus::class, 'seller_order_statuses', 'seller_order_id', 'order_status_id')->withTimestamps();
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
     }
 }

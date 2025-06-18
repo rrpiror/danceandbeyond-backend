@@ -73,4 +73,53 @@ class OrderController extends Controller
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
         }
     }
+
+    public function getSellerOrders()
+    {
+        try {
+            $sellerOrders = $this->orderService->getSellerOrders();
+            return apiResponse(true, $sellerOrders, "Seller orders retrieved successfully");
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function getSellerOrderById($id)
+    {
+        try {
+            $sellerOrder = $this->orderService->getSellerOrderById($id);
+            return apiResponse(true, $sellerOrder, "Seller order retrieved successfully");
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function getAllOrderStatuses()
+    {
+        try {
+            $statuses = $this->orderService->getAllOrderStatuses();
+            return apiResponse(true, $statuses, "Order statuses retrieved successfully");
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function addStatusToSellerOrder(Request $request, $sellerOrderId)
+    {
+        try {
+            $validation = $this->validationService->validate($request, [
+                'status_id' => 'required|integer|exists:order_statuses,id',
+            ]);
+
+            if ($validation) {
+                return apiResponse(false, $validation, 'Invalid data', 5, 422);
+            }
+
+            $sellerOrder = $this->orderService->addStatusToSellerOrder($sellerOrderId, $request->status_id);
+
+            return apiResponse(true, $sellerOrder, "Status added to seller order successfully");
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, $ex->getCode() ?? 500);
+        }
+    }
 }

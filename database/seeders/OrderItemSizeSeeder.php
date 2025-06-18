@@ -27,6 +27,7 @@ class OrderItemSizeSeeder extends Seeder
                 OrderItemSize::create([
                     'order_item_id' => $orderItem->id,
                     'size_id' => $productSize->size_id,
+                    'quantity' => $productSize->quantity,
                 ]);
             }
         }

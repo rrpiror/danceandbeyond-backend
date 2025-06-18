@@ -30,6 +30,10 @@ Route::post('/stripe/webhook', [StripeWebHookController::class, 'handleWebhook']
 Route::middleware(['auth:api'])->group(function () {
     Route::get('/stripe/connect', [UserController::class, 'stripeConnect']);
     Route::get('/seller/info', [OrderController::class, 'getSellerInfo']);
+    Route::get('/seller/orders', [OrderController::class, 'getSellerOrders']);
+    Route::get('/seller/orders/{id}', [OrderController::class, 'getSellerOrderById']);
+    Route::post('/seller/orders/{id}/status', [OrderController::class, 'addStatusToSellerOrder']);
+    Route::get('/order-statuses', [OrderController::class, 'getAllOrderStatuses']);
     Route::get('/colours', [ColourController::class, 'index']);
     Route::get('/brands', [BrandController::class, 'index']);
     Route::get('/conditions', [ConditionController::class, 'index']);
