@@ -15,6 +15,7 @@ use App\Repositories\SellerOrderRepository;
 use App\Services\PaymentService;
 use App\Repositories\UserAddressRepository;
 use App\Repositories\PayoutTransactionRepository;
+use App\Models\StripeIntent;
 
 /**
  * OrderService handles all order-related business logic including creation, updates, and retrieval of orders.
@@ -115,6 +116,8 @@ class OrderService
             // Get authenticated user ID
             $userId = Auth::id();
             $data['user_id'] = $userId;
+            
+            $data['payment_method_id'] = 1; // Stripe is the default payment method
 
             // Fetch all products involved in the order
             $productIds = collect($data['items'])->pluck('product_id')->toArray();
@@ -171,17 +174,36 @@ class OrderService
                 $this->createOrderItems($sellerOrder, $sellerProducts, $products);
             }
 
-            DB::commit();
-
             // Create payment intent for the order
-            $stripeUrl = $this->paymentService->createStripePaymentIntent(
+            $paymentIntentData = $this->paymentService->createStripePaymentIntent(
                 $order->toArray(),
                 $itemsArray
             );
 
+            // Store the stripe intent in the database
+            $stripeIntent = StripeIntent::create([
+                'order_id' => $order->id,
+                'payment_intent_id' => $paymentIntentData['payment_intent_id'],
+                'client_secret' => $paymentIntentData['client_secret'],
+                'amount' => $data['amount'], // Store amount in regular currency format (to match orders table)
+                'currency' => $paymentIntentData['currency'] ?? 'gbp',
+                'status' => 'requires_payment_method', // Default status for new payment intents
+                'metadata' => [
+                    'order_id' => $order->id,
+                    'user_id' => $userId,
+                ],
+            ]);
+
+            DB::commit();
+
             return [
-                'order' => $order,
-                'stripe_url' => $stripeUrl
+                'order' => $order->load('stripeIntent'),
+                'client_secret' => $paymentIntentData['client_secret'],
+                'payment_intent_id' => $paymentIntentData['payment_intent_id'],
+                'amount' => $paymentIntentData['amount'],
+                'currency' => $paymentIntentData['currency'],
+                // Keep backward compatibility
+                'stripe_url' => null, // We'll handle this in Flutter now
             ];
         } catch (Exception $ex) {
             DB::rollBack();
@@ -211,7 +233,7 @@ class OrderService
             'amount' => $totalAmount
         ]);
 
-        $pendingStatus = $this->orderStatusRepository->getStatusByName('Pending');
+        $pendingStatus = $this->orderStatusRepository->findById(env('ORDER_STATUS_PAYMENT_PENDING_ID'));
         $sellerOrder->statuses()->attach($pendingStatus->id);
 
         return $sellerOrder;
@@ -228,7 +250,7 @@ class OrderService
         foreach ($items as $item) {
             $product = $products[$item['product_id']];
 
-            $product_snapshot = $this->createProductSnapshot($item);
+            $product_snapshot = $this->createProductSnapshot($item, $product);
 
             // Create order item with product details
             $orderItem = $this->orderItemRepository->create([
@@ -239,19 +261,31 @@ class OrderService
                 'product_snapshot' => json_encode($product_snapshot)
             ]);
 
-            // Attach size if specified
-            if (!empty($item['size_id'])) {
-                $orderItem->sizes()->sync($item['size_id']);
+            // Process sizes array with quantities
+            if (!empty($item['sizes']) && is_array($item['sizes'])) {
+                $sizesData = [];
+                foreach ($item['sizes'] as $size) {
+                    if (isset($size['id']) && isset($size['quantity'])) {
+                        $sizesData[$size['id']] = ['quantity' => $size['quantity']];
+                    }
+                }
+                if (!empty($sizesData)) {
+                    $orderItem->sizes()->sync($sizesData);
+                }
+            } elseif (!empty($item['size_id'])) {
+                // Fallback: if no sizes array but size_id exists, use item quantity
+                $orderItem->sizes()->sync([
+                    $item['size_id'] => ['quantity' => $item['quantity']]
+                ]);
             }
         }
     }
 
-    private function createProductSnapshot($item)
+    private function createProductSnapshot($item, $product)
     {
-        $product = $item['product_snapshot'];
         $isHire = $product->type === 'hire';
-        $sizes = $item['sizes'];
-        $colours = $item['colours'];
+        $sizes = $item['sizes'] ?? [];
+        $colour = $item['colour'] ?? null;
         
         $product_snapshot = [
             'id' => $product->id,
@@ -309,7 +343,7 @@ class OrderService
 
         $product_snapshot['sizes'] = $sizes;
 
-        $product_snapshot['colour'] = $colours;
+        $product_snapshot['colour'] = $colour;
 
         return $product_snapshot;
     }

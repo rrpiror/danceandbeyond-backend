@@ -14,8 +14,8 @@ class PaymentMethodSeeder extends Seeder
     {
         $paymentMethods = [
             [
-                'name' => 'Credit Card',
-                'description' => 'Pay with Visa, Mastercard, or American Express',
+                'name' => 'Stripe',
+                'description' => 'Pay with Stripe',
             ],
             [
                 'name' => 'Debit Card',

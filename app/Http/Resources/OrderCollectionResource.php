@@ -42,6 +42,18 @@ class OrderCollectionResource extends ResourceCollection
                     'seller_orders' => $order->sellerOrders->map(function ($sellerOrder) {                    
                         return new SellerOrderResource($sellerOrder);
                     }),
+                    
+                    // Include stripe intent if available
+                    'stripe_intent' => $order->stripeIntent ? [
+                        'id' => $order->stripeIntent->id,
+                        'payment_intent_id' => $order->stripeIntent->payment_intent_id,
+                        'client_secret' => $order->stripeIntent->client_secret,
+                        'amount' => $order->stripeIntent->amount,
+                        'currency' => $order->stripeIntent->currency,
+                        'status' => $order->stripeIntent->status,
+                        'created_at' => $order->stripeIntent->created_at,
+                        'updated_at' => $order->stripeIntent->updated_at,
+                    ] : null,
                 ];
             })->all();
     }

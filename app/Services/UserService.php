@@ -282,4 +282,9 @@ class UserService
 
         return $profile;
     }
+
+    public function findById(int $id)
+    {
+        return $this->userRepository->findById($id);
+    }
 }

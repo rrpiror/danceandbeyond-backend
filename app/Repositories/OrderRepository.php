@@ -18,7 +18,7 @@ class OrderRepository
 
     public function findById($id)
     {
-        $orderData = $this->order->with('sellerOrders.statuses', 'orderItems.product')->where('user_id', Auth::user()->id)->find($id);
+        $orderData = $this->order->with('sellerOrders.statuses', 'orderItems.product', 'stripeIntent')->where('user_id', Auth::user()->id)->find($id);
         
         return new OrderResource($orderData);
     }
@@ -31,7 +31,7 @@ class OrderRepository
     public function getAll()
     {
         $ordersData = $this->order->where('user_id', Auth::user()->id)->latest()->get()
-        ->load(['sellerOrders.statuses', 'sellerOrders.orderItems']);
+        ->load(['sellerOrders.statuses', 'sellerOrders.orderItems', 'stripeIntent']);
         
         return new OrderCollectionResource($ordersData);
     }

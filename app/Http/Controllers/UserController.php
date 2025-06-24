@@ -273,4 +273,24 @@ class UserController extends Controller
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
         }
     }
+
+    public function getCurrentUser()
+    {
+        try {
+            $user = $this->userService->findById(auth()->user()->id);
+            return apiResponse(true, $user);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function findById(int $id)
+    {
+        try {
+            $user = $this->userService->findById($id);
+            return apiResponse(true, $user);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
 }

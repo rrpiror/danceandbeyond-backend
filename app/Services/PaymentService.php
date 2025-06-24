@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Auth;
 use Stripe\Checkout\Session;
+use Stripe\PaymentIntent;
 use Stripe\Stripe;
 
 /**
@@ -19,13 +20,52 @@ class PaymentService
     }
 
     /**
-     * Create a Stripe Checkout Session for order payment
+     * Create a Stripe Payment Intent for order payment (for Flutter Stripe integration)
+     * 
+     * @param array $data Order data including id and other details
+     * @param array $items Array of order items with product details
+     * @return array Payment Intent details including client secret
+     */
+    public function createStripePaymentIntent(array $data, $items)
+    {
+        $user = Auth::user();
+
+        // Calculate total amount in pence
+        $totalAmount = 0;
+        foreach ($items as $item) {
+            $totalAmount += $item['price'] * $item['quantity'];
+        }
+
+        // Create Payment Intent
+        $paymentIntent = PaymentIntent::create([
+            'amount' => $totalAmount,
+            'currency' => env('CASHIER_CURRENCY', 'gbp'),
+            'customer' => $user->stripe_customer_id,
+            'metadata' => [
+                'order_id' => $data['id'],
+                'user_id' => $user->id,
+            ],
+            'automatic_payment_methods' => [
+                'enabled' => true,
+            ],
+        ]);
+
+        return [
+            'client_secret' => $paymentIntent->client_secret,
+            'payment_intent_id' => $paymentIntent->id,
+            'amount' => $totalAmount,
+            'currency' => $paymentIntent->currency,
+        ];
+    }
+
+    /**
+     * Create a Stripe Checkout Session for web-based payments (fallback)
      * 
      * @param array $data Order data including id and other details
      * @param array $items Array of order items with product details
      * @return string Stripe Checkout Session URL
      */
-    public function createStripePaymentIntent(array $data, $items)
+    public function createStripeCheckoutSession(array $data, $items)
     {
         $user = Auth::user();
 

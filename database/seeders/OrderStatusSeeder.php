@@ -22,8 +22,9 @@ class OrderStatusSeeder extends Seeder
             ['name' => 'Shipped'],
             ['name' => 'Delivered'],
             ['name' => 'Cancelled'],
-            ['name' => 'Disput'],
-            ['name' => 'Disput Resolved'],
+            ['name' => 'Dispute'],
+            ['name' => 'Dispute Resolved'],
+            ['name' => 'Payment Failed'],
         ];
 
         foreach ($statuses as $status) {

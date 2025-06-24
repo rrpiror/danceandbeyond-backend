@@ -10,6 +10,7 @@ use UnexpectedValueException;
 use Illuminate\Support\Facades\Log;
 use App\Repositories\TransactionRepository;
 use App\Repositories\OrderTransactionRepository;
+use App\Models\StripeIntent;
 
 /**
  * StripeWebHookService handles all Stripe webhook events
@@ -78,12 +79,28 @@ class StripeWebHookService
             'user_id' => $paymentIntent->metadata->user_id,
         ]);
 
-        // Find seller order and update status to payment confirmed
+        // Update stripe intent status
+        $stripeIntent = StripeIntent::where('payment_intent_id', $paymentIntent->id)->first();
+        if ($stripeIntent) {
+            $stripeIntent->update(['status' => 'succeeded']);
+        }
+
+        // Find seller orders and update status to payment confirmed
         $sellerOrders = $this->sellerOrderRepository->findByOrderId($orderId);
+        $paymentConfirmedStatus = $this->orderStatusRepository->findById(env('ORDER_STATUS_PAYMENT_CONFIRMED_ID'));
 
         foreach ($sellerOrders as $sellerOrder) {
-            $sellerOrder->statuses()->attach($this->orderStatusRepository->getStatusByName('Payment Confirmed')->id);
+            // Check if this status hasn't been added yet to avoid duplicates
+            if (!$sellerOrder->statuses()->where('order_status_id', $paymentConfirmedStatus->id)->exists()) {
+                $sellerOrder->statuses()->attach($paymentConfirmedStatus->id);
+            }
         }
+
+        Log::info('Payment confirmed for order', [
+            'order_id' => $orderId,
+            'payment_intent_id' => $paymentIntent->id,
+            'amount' => $paymentIntent->amount / 100
+        ]);
 
         return true;
     }
@@ -100,14 +117,25 @@ class StripeWebHookService
             return false;
         }
 
-        // Find seller order and update status to payment failed
-        $sellerOrders = $this->sellerOrderRepository->findByOrderId($orderId);
-
-        foreach ($sellerOrders as $sellerOrder) {
-            $sellerOrder->statuses()->attach($this->orderStatusRepository->getStatusByName('Payment Failed')->id);
+        // Update stripe intent status
+        $stripeIntent = StripeIntent::where('payment_intent_id', $paymentIntent->id)->first();
+        if ($stripeIntent) {
+            $stripeIntent->update(['status' => 'payment_failed']);
         }
 
-        // Handle failed payment logic here
+        // Find seller orders and update status to payment failed
+        $sellerOrders = $this->sellerOrderRepository->findByOrderId($orderId);
+        $paymentFailedStatus = $this->orderStatusRepository->findById(env('ORDER_STATUS_PAYMENT_FAILED_ID'));
+
+        foreach ($sellerOrders as $sellerOrder) {
+            $sellerOrder->statuses()->attach($paymentFailedStatus->id);
+        }
+
+        Log::info('Payment failed for order', [
+            'order_id' => $orderId,
+            'payment_intent_id' => $paymentIntent->id
+        ]);
+
         return true;
     }
 }

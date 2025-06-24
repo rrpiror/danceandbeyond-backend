@@ -33,6 +33,18 @@ class OrderResource extends JsonResource
             'seller_orders' => $this->sellerOrders->map(function ($sellerOrder) {                
                 return new SellerOrderResource($sellerOrder);
             }),
+            
+            // Include stripe intent if available
+            'stripe_intent' => $this->stripeIntent ? [
+                'id' => $this->stripeIntent->id,
+                'payment_intent_id' => $this->stripeIntent->payment_intent_id,
+                'client_secret' => $this->stripeIntent->client_secret,
+                'amount' => $this->stripeIntent->amount,
+                'currency' => $this->stripeIntent->currency,
+                'status' => $this->stripeIntent->status,
+                'created_at' => $this->stripeIntent->created_at,
+                'updated_at' => $this->stripeIntent->updated_at,
+            ] : null,
         ];
     }
 }

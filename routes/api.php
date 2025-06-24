@@ -28,6 +28,7 @@ Route::put('/reset-password', [UserController::class, 'resetPassword']);
 Route::post('/stripe/webhook', [StripeWebHookController::class, 'handleWebhook']);
 
 Route::middleware(['auth:api'])->group(function () {
+    Route::get('/current-user', [UserController::class, 'getCurrentUser']);
     Route::get('/stripe/connect', [UserController::class, 'stripeConnect']);
     Route::get('/seller/info', [OrderController::class, 'getSellerInfo']);
     Route::get('/seller/orders', [OrderController::class, 'getSellerOrders']);
@@ -60,5 +61,6 @@ Route::middleware(['auth:api'])->group(function () {
         Route::delete('/delete-account', [UserController::class, 'deleteAccount']);
         Route::get('/profile', [UserController::class, 'getProfile']);
         Route::put('/profile', [UserController::class, 'updateProfile']);
+        Route::get('/{id}', [UserController::class, 'findById']);
     });
 });

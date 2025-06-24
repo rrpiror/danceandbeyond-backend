@@ -38,4 +38,9 @@ class Order extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function stripeIntent()
+    {
+        return $this->hasOne(StripeIntent::class);
+    }
 }
