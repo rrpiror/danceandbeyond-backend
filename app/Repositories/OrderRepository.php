@@ -28,11 +28,19 @@ class OrderRepository
         return $this->order->create($data);
     }
 
-    public function getAll()
+    public function getAll($page = 1, $perPage = 15)
     {
-        $ordersData = $this->order->where('user_id', Auth::user()->id)->latest()->get()
-        ->load(['sellerOrders.statuses', 'sellerOrders.orderItems', 'stripeIntent']);
+        $ordersData = $this->order->where('user_id', Auth::user()->id)
+            ->with(['sellerOrders.statuses', 'sellerOrders.orderItems', 'stripeIntent'])
+            ->latest()
+            ->paginate($perPage, ['*'], 'page', $page);
         
-        return new OrderCollectionResource($ordersData);
+        // Transform the collection using OrderCollectionResource
+        $ordersCollection = new OrderCollectionResource($ordersData->getCollection());
+        
+        // Replace the collection in the paginated data with the transformed collection
+        $ordersData->setCollection(collect($ordersCollection->toArray(request())));
+        
+        return $ordersData;
     }
 }

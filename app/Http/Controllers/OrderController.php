@@ -27,10 +27,13 @@ class OrderController extends Controller
         $this->validationService = $validationService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $orders = $this->orderService->getAll();
+            $page = $request->get('page', 1);
+            $perPage = $request->get('per_page', 15);
+            
+            $orders = $this->orderService->getAll($page, $perPage);
             return apiResponse(true, $orders, "Orders retrieved successfully");
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, $ex->getCode() ?? 500);

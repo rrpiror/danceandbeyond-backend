@@ -89,15 +89,25 @@ class ProductRepository
             }
         }
 
-        $products = $query->withCount('reviews')
+        // Pagination parameters
+        $perPage = isset($data['per_page']) ? (int)$data['per_page'] : 10;
+        $page = isset($data['page']) ? (int)$data['page'] : 1;
+
+        $query = $query->withCount('reviews')
             ->withAvg('reviews', 'rating')
             ->with('media')
-            ->latest()
-            ->get();
+            ->latest();
 
-        $products = $this->addFavouriteAttributeIfAuthenticated($products);
+        // Get paginated results
+        $paginatedProducts = $query->paginate($perPage, ['*'], 'page', $page);
 
-        return $products;
+        // Process the products to add favourite attribute
+        $products = $this->addFavouriteAttributeIfAuthenticated($paginatedProducts->getCollection());
+        
+        // Replace the collection in the paginated result
+        $paginatedProducts->setCollection($products);
+
+        return $paginatedProducts;
     }
 
     public function findById($id)

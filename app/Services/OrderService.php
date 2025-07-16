@@ -59,11 +59,13 @@ class OrderService
 
     /**
      * Get all orders with their related seller orders and order items
-     * @return Collection
+     * @param int $page
+     * @param int $perPage
+     * @return \Illuminate\Pagination\LengthAwarePaginator
      */
-    public function getAll()
+    public function getAll($page = 1, $perPage = 15)
     {
-        return $this->orderRepository->getAll();
+        return $this->orderRepository->getAll($page, $perPage);
     }
 
     public function findById($id)

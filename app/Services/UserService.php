@@ -61,7 +61,7 @@ class UserService
             }
             return ['user' => $user, 'token' => $token->plainTextToken];
         } else {
-            throw new Exception('Wrong Credentials.', 404);
+            throw new Exception('Invalid Credentials.', 404);
         }
     }
 

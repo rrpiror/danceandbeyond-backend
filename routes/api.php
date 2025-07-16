@@ -21,9 +21,11 @@ Route::post('/seed', [SeederController::class, 'seed']);
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/signup', [UserController::class, 'signup']);
-Route::post('/send-forgot-password-link', [UserController::class, 'sendForgotPasswordLink']);
-Route::post('/validate-reset-password-token', [UserController::class, 'validateResetPasswordToken']);
-Route::put('/reset-password', [UserController::class, 'resetPassword']);
+// Route::post('/send-forgot-password-link', [UserController::class, 'sendForgotPasswordLink']);
+// Route::post('/validate-reset-password-token', [UserController::class, 'validateResetPasswordToken']);
+// Route::put('/reset-password-old', [UserController::class, 'resetPassword']);
+Route::post('/forgot-password', [UserController::class, 'forgotPassword']);
+Route::post('/reset-password', [UserController::class, 'resetPasswordViaOtp']);
 
 Route::post('/stripe/webhook', [StripeWebHookController::class, 'handleWebhook']);
 

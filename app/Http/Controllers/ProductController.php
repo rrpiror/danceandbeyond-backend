@@ -32,8 +32,8 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         try {
-            $products = $this->productService->getAll($request->all());
-            return apiResponse(true, $products);
+            $paginatedProducts = $this->productService->getAll($request->all());
+            return apiResponse(true, $paginatedProducts->toArray());
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
         }
