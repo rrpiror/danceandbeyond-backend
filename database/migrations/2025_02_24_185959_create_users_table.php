@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('email');
             $table->string('phone_number');
+            $table->enum('role', ['admin', 'user'])->default('user');
             $table->text('password');
             $table->boolean('email_verified')->default(true);
             $table->boolean('remember_me')->default(false);

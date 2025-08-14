@@ -22,6 +22,7 @@ class UserSeeder extends Seeder
             'email_verified' => true,
             'password' => Hash::make('password'),
             'remember_token' => Str::random(10),
+            'role' => 'admin',
             'type' => 'individual',
             'status' => 'active',
         ]);
