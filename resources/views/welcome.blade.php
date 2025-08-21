@@ -5,7 +5,7 @@
 <section class="relative min-h-[85vh] flex items-center isolate">
   <!-- BG image -->
   <img
-      src="{{ asset('storage/landing/vestu-hero.png') }}"
+      src="{{ asset('landing/vestu-hero.png') }}"
       alt="Vestu hero"
       class="absolute inset-0 h-full w-full object-cover"
       loading="eager"
@@ -37,7 +37,7 @@
             {{-- Step 1 --}}
             <article class="flex flex-col">
                 <img
-                    src="{{ asset('storage/landing/hire.png') }}"
+                    src="{{ asset('landing/hire.png') }}"
                     alt="Sell dance clothing"
                     class="mb-5 w-full aspect-square object-cover rounded-2xl shadow-sm"
                     loading="lazy"
@@ -51,7 +51,7 @@
             {{-- Step 2 --}}
             <article class="flex flex-col">
                 <img
-                    src="{{ asset('storage/landing/sell.png') }}"
+                    src="{{ asset('landing/sell.png') }}"
                     alt="Hire dance clothing"
                     class="mb-5 w-full aspect-square object-cover rounded-2xl shadow-sm"
                     loading="lazy"
@@ -65,7 +65,7 @@
             {{-- Step 3 --}}
             <article class="flex flex-col">
                 <img
-                    src="{{ asset('storage/landing/payday.png') }}"
+                    src="{{ asset('landing/payday.png') }}"
                     alt="Sell or hire dance clothing"
                     class="mb-5 w-full aspect-square object-cover rounded-2xl shadow-sm"
                     loading="lazy"
@@ -99,7 +99,7 @@
       <!-- Image -->
       <div>
         <img 
-          src="{{ asset('storage/landing/2.jpg') }}" 
+          src="{{ asset('landing/2.jpg') }}" 
           alt="Dancers in costume"
           class="w-full rounded-2xl object-cover shadow-lg outline outline-1 -outline-offset-1 outline-black/5 dark:outline-white/10"
         />
@@ -129,7 +129,7 @@
         </div>
 
         <div class="mt-10 xl:mx-auto xl:max-w-7xl xl:px-8">
-          <img src="{{ asset('storage/landing/section.jpg') }}" alt="" class="w-full object-cover outline-1 -outline-offset-1 outline-black/5 xl:rounded-3xl dark:outline-white/10" />
+          <img src="{{ asset('landing/section.jpg') }}" alt="" class="w-full object-cover outline-1 -outline-offset-1 outline-black/5 xl:rounded-3xl dark:outline-white/10" />
         </div>
 
       </div>
@@ -141,7 +141,7 @@
 </section>
 
 <!-- CTA -->
-<section class="relative isolate bg-white pb-32">
+<section class="relative isolate bg-white">
   <div class="mx-auto max-w-2xl text-center">
       <h2>Buy for less. Sell for free.</h2>
       <h4>Find high-quality dancewear at prices that won’t break the bank.</h4>
