@@ -142,7 +142,7 @@
 
 <!-- CTA -->
 <section class="relative isolate bg-white">
-  <div class="mx-auto max-w-2xl text-center">
+  <div class="mb-10 mx-auto max-w-2xl text-center">
       <h2>Buy for less. Sell for free.</h2>
       <h4>Find high-quality dancewear at prices that won’t break the bank.</h4>
 
