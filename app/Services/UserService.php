@@ -7,7 +7,7 @@ use App\Repositories\AddressRepository;
 use App\Repositories\UserAddressRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\UserReviewRepository;
-use App\Repositories\UserSchoolRepository;
+use App\Repositories\OrganisationRepository;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,16 +21,16 @@ use Illuminate\Support\Facades\Mail;
 class UserService
 {
     protected UserRepository $userRepository;
-    protected UserSchoolRepository $userSchoolRepository;
+    protected OrganisationRepository $organisationRepository;
     protected UserAddressRepository $userAddressRepository;
     protected AddressRepository $addressRepository;
     protected UserReviewRepository $userReviewRepository;
     protected PaymentService $paymentService;
 
-    public function __construct(UserRepository $userRepository, UserSchoolRepository $userSchoolRepository, UserAddressRepository $userAddressRepository, AddressRepository $addressRepository, UserReviewRepository $userReviewRepository, PaymentService $paymentService)
+    public function __construct(UserRepository $userRepository, OrganisationRepository $organisationRepository, UserAddressRepository $userAddressRepository, AddressRepository $addressRepository, UserReviewRepository $userReviewRepository, PaymentService $paymentService)
     {
         $this->userRepository = $userRepository;
-        $this->userSchoolRepository = $userSchoolRepository;
+        $this->organisationRepository = $organisationRepository;
         $this->userAddressRepository = $userAddressRepository;
         $this->addressRepository = $addressRepository;
         $this->userReviewRepository = $userReviewRepository;
@@ -56,8 +56,8 @@ class UserService
             }
 
             $token = $user->createToken(env('APP_KEY'));
-            if ($user->type == 'school') {
-                $user->school = $user->school;
+            if ($user->type == 'organisation') {
+                $user->load('organisation');
             }
             return ['user' => $user, 'token' => $token->plainTextToken];
         } else {
@@ -85,18 +85,18 @@ class UserService
 
             $user->address()->attach($address->id, ['type' => 'shipping']);
 
-            if ($data['type'] == 'school') {
-                $data['school']['user_id'] = $user->id;
-                $this->userSchoolRepository->create($data['school']);
+            if ($data['type'] == 'organisation') {
+                $data['organisation']['user_id'] = $user->id;
+                $this->organisationRepository->create($data['organisation']);
             }
 
             if (isset($data['profile_image']) && $data['profile_image']) {
                 $imageType = explode(';', $data['profile_image'])[0];
                 $imageType = explode('/', $imageType)[1];
 
-                if (!in_array(strtolower($imageType), ['jpg', 'jpeg', 'png'])) {
-                    throw new Exception('Invalid image type. Only JPG, JPEG and PNG are allowed.', 422);
-                }
+                // if (!in_array(strtolower($imageType), ['jpg', 'jpeg', 'png'])) {
+                //     throw new Exception('Invalid image type. Only JPG, JPEG and PNG are allowed.', 422);
+                // }
 
                 $user->addMediaFromBase64($data['profile_image'])
                     ->toMediaCollection('profile');
@@ -113,8 +113,8 @@ class UserService
             $user->save();
 
             $token = $user->createToken(env('APP_KEY'));
-            if ($user->type == 'school') {
-                $user->school = $user->school;
+            if ($user->type == 'organisation') {
+                $user->load('organisation');
             }
 
             return ['user' => $user, 'token' => $token->plainTextToken];
@@ -232,9 +232,9 @@ class UserService
             $imageType = explode(';', $data['profile_image'])[0];
             $imageType = explode('/', $imageType)[1];
 
-            if (!in_array(strtolower($imageType), ['jpg', 'jpeg', 'png'])) {
-                throw new Exception('Invalid image type. Only JPG, JPEG and PNG are allowed.', 422);
-            }
+            // if (!in_array(strtolower($imageType), ['jpg', 'jpeg', 'png'])) {
+            //     throw new Exception('Invalid image type. Only JPG, JPEG and PNG are allowed.', 422);
+            // }
 
             $user->addMediaFromBase64($data['profile_image'])
                 ->toMediaCollection('profile');
@@ -246,8 +246,8 @@ class UserService
             }
         }
 
-        if ($data['type'] == 'school') {
-            $user->school->fill($data['school'])->save();
+        if ($data['type'] == 'organisation') {
+            $user->organisation->fill($data['organisation'])->save();
         }
 
         return $user;
@@ -278,7 +278,7 @@ class UserService
 
         $profile = $this->userRepository->findById($user->id);
 
-        $profile->load('school', 'media', 'address');
+        $profile->load('organisation', 'media', 'address');
 
         return $profile;
     }
@@ -286,5 +286,34 @@ class UserService
     public function findById(int $id)
     {
         return $this->userRepository->findById($id);
+    }
+
+    public function doesEmailExist(string $email): bool
+    {
+        return $this->userRepository->findByEmail($email) !== null;
+    }
+
+    public function doesPhoneNumberExist(string $phoneNumber): bool
+    {
+        $user = $this->userRepository->findByPhoneNumber($phoneNumber);
+        return $user !== null;
+    }
+
+    public function doesPhoneNumberChangeExist(string $phoneNumber, int $userId): bool
+    {
+        $user = $this->userRepository->findByPhoneNumber($phoneNumber);
+        return $user !== null && $user->id !== $userId;
+    }
+
+    public function doesUsernameExist(string $username): bool
+    {
+        $user = $this->userRepository->findByUsername($username);
+        return $user !== null;
+    }
+
+    public function doesUsernameChangeExist(string $username, int $userId): bool
+    {
+        $user = $this->userRepository->findByUsername($username);
+        return $user !== null && $user->id !== $userId;
     }
 }

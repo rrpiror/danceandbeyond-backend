@@ -33,7 +33,7 @@ class ProductController extends Controller
     {
         try {
             $paginatedProducts = $this->productService->getAll($request->all());
-            return apiResponse(true, $paginatedProducts->toArray());
+            return apiResponse(true, $paginatedProducts);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
         }

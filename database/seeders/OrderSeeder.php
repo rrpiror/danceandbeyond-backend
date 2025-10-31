@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Address;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderItemHiringDetail;
 use App\Models\OrderStatus;
 use App\Models\PaymentMethod;
 use App\Models\Product;
@@ -110,8 +111,9 @@ class OrderSeeder extends Seeder
 
             $sellerOrder = $sellerOrders[$sellerId];
 
-            $quantity = rand(1, 6);
             $isHire = $product->type === 'hire';
+            $quantity = rand(1, 6); // Quantity for both hire and sale products
+            $hiringDays = null;
 
             // Create product snapshot
             $productSnapshot = [
@@ -159,10 +161,10 @@ class OrderSeeder extends Seeder
             ];
 
             if ($isHire && $product->hiringDetail) {
-                $days = rand($product->hiringDetail->min_hire_days, 10);
+                $hiringDays = rand($product->hiringDetail->min_hire_days, 10);
 
                 $productSnapshot['hiring_details'] = [
-                    'days' => $days,
+                    'days' => $hiringDays,
                     ...$product->hiringDetail->toArray(),
                 ];
             }
@@ -181,13 +183,21 @@ class OrderSeeder extends Seeder
             $totalItemPrice = $price * $quantity;
 
             // Create Order Item
-            OrderItem::create([
+            $orderItem = OrderItem::create([
                 'seller_order_id' => $sellerOrder->id,
                 'product_id' => $product->id,
                 'quantity' => $quantity,
                 'price' => $price,
                 'product_snapshot' => json_encode($productSnapshot),
             ]);
+
+            // Create hiring detail if it's a hire product
+            if ($isHire && $hiringDays) {
+                OrderItemHiringDetail::create([
+                    'order_item_id' => $orderItem->id,
+                    'hiring_days' => $hiringDays,
+                ]);
+            }
 
             // Update seller order amount
             $sellerOrder->increment('amount', $totalItemPrice);

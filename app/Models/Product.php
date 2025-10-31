@@ -79,6 +79,11 @@ class Product extends Model implements HasMedia
         return $this->hasOne(HiringDetail::class);
     }
 
+    public function unavailabilityDurations()
+    {
+        return $this->hasMany(UnavailabilityDuration::class);
+    }
+
     public function reviews()
     {
         return $this->hasMany(ProductReview::class);

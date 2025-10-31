@@ -6,17 +6,18 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class HiringUnavailabilityDay extends Model
+class UnavailabilityDuration extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'hiring_detail_id',
-        'date'
+        'product_id',
+        'start_date',
+        'end_date'
     ];
 
-    public function hiringDetail()
+    public function product()
     {
-        return $this->belongsTo(HiringDetail::class);
+        return $this->belongsTo(Product::class);
     }
 }

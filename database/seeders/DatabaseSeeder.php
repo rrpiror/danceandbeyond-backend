@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
             
             // Users and related
             UserSeeder::class,
-            UserSchoolSeeder::class,
+            OrganisationSeeder::class,
             AddressSeeder::class,
             UserAddressSeeder::class,
             
@@ -33,7 +33,6 @@ class DatabaseSeeder extends Seeder
             ProductColourSeeder::class,
             ProductFulfillmentOptionSeeder::class,
             HiringDetailSeeder::class,
-            HiringUnavailabilityDaySeeder::class,
             FavouriteProductSeeder::class,
             
             // Orders and related

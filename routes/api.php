@@ -27,6 +27,11 @@ Route::post('/signup', [UserController::class, 'signup']);
 Route::post('/forgot-password', [UserController::class, 'forgotPassword']);
 Route::post('/reset-password', [UserController::class, 'resetPasswordViaOtp']);
 
+// Validation endpoints (public)
+Route::post('/does-email-exist', [UserController::class, 'doesEmailExist']);
+Route::post('/does-phone-number-exist', [UserController::class, 'doesPhoneNumberExist']);
+Route::post('/does-username-exist', [UserController::class, 'doesUsernameExist']);
+
 Route::post('/stripe/webhook', [StripeWebHookController::class, 'handleWebhook']);
 
 Route::middleware(['auth:api'])->group(function () {
@@ -65,4 +70,8 @@ Route::middleware(['auth:api'])->group(function () {
         Route::put('/profile', [UserController::class, 'updateProfile']);
         Route::get('/{id}', [UserController::class, 'findById']);
     });
+
+    // Validation endpoints (authenticated - for checking changes)
+    Route::post('/does-phone-number-change-exist', [UserController::class, 'doesPhoneNumberChangeExist']);
+    Route::post('/does-username-change-exist', [UserController::class, 'doesUsernameChangeExist']);
 });

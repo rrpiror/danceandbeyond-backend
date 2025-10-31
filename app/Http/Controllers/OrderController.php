@@ -32,8 +32,15 @@ class OrderController extends Controller
         try {
             $page = $request->get('page', 1);
             $perPage = $request->get('per_page', 15);
+            $sortBy = $request->get('sort_by', 'newest'); // 'newest' or 'oldest'
+            $type = $request->get('type', null); // 'hire', 'purchase', or 'hire,purchase'
             
-            $orders = $this->orderService->getAll($page, $perPage);
+            $filters = [
+                'sort_by' => $sortBy,
+                'type' => $type,
+            ];
+            
+            $orders = $this->orderService->getAll($page, $perPage, $filters);
             return apiResponse(true, $orders, "Orders retrieved successfully");
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, $ex->getCode() ?? 500);

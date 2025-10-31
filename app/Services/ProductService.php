@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Repositories\HiringDetailRepository;
-use App\Repositories\HiringUnavailabilityDayRepository;
+use App\Repositories\UnavailabilityDurationRepository;
 use App\Repositories\ProductFulfillmentOptionRepository;
 use App\Repositories\ProductRepository;
 use App\Repositories\ProductSizeRepository;
@@ -25,7 +25,7 @@ class ProductService
     protected ProductFulfillmentOptionRepository $productFulfillmentOptionRepository;
     protected ProductSizeRepository $productSizeRepository;
     protected HiringDetailRepository $hiringDetailRepository;
-    protected HiringUnavailabilityDayRepository $hiringUnavailbilityDayRepository;
+    protected UnavailabilityDurationRepository $unavailabilityDurationRepository;
     protected BrandRepository $brandRepository;
     protected CategoryRepository $categoryRepository;
     protected ConditionRepository $conditionRepository;
@@ -35,13 +35,13 @@ class ProductService
     protected ColourRepository $colourRepository;
     protected PaymentService $paymentService;
 
-    public function __construct(ProductRepository $productRepository, ProductFulfillmentOptionRepository $productFulfillmentOptionRepository, ProductSizeRepository $productSizeRepository, HiringDetailRepository $hiringDetailRepository, HiringUnavailabilityDayRepository $hiringUnavailbilityDayRepository, BrandRepository $brandRepository, CategoryRepository $categoryRepository, ConditionRepository $conditionRepository, SizeRepository $sizeRepository, FulfillmentOptionRepository $fulfillmentOptionRepository, ServiceProviderRepository $serviceProviderRepository, ColourRepository $colourRepository, PaymentService $paymentService)
+    public function __construct(ProductRepository $productRepository, ProductFulfillmentOptionRepository $productFulfillmentOptionRepository, ProductSizeRepository $productSizeRepository, HiringDetailRepository $hiringDetailRepository, UnavailabilityDurationRepository $unavailabilityDurationRepository, BrandRepository $brandRepository, CategoryRepository $categoryRepository, ConditionRepository $conditionRepository, SizeRepository $sizeRepository, FulfillmentOptionRepository $fulfillmentOptionRepository, ServiceProviderRepository $serviceProviderRepository, ColourRepository $colourRepository, PaymentService $paymentService)
     {
         $this->productRepository = $productRepository;
         $this->productFulfillmentOptionRepository = $productFulfillmentOptionRepository;
         $this->productSizeRepository = $productSizeRepository;
         $this->hiringDetailRepository = $hiringDetailRepository;
-        $this->hiringUnavailbilityDayRepository = $hiringUnavailbilityDayRepository;
+        $this->unavailabilityDurationRepository = $unavailabilityDurationRepository;
         $this->brandRepository = $brandRepository;
         $this->categoryRepository = $categoryRepository;
         $this->conditionRepository = $conditionRepository;
@@ -129,15 +129,20 @@ class ProductService
             if ($data['type'] == 'hire') {
                 if (isset($data['hiring_details'])) {
                     $data['hiring_details']['product_id'] = $product->id;
-
                     $hiringDetails = $this->hiringDetailRepository->create($data['hiring_details']);
-
-                    if (isset($data['unavailable_dates'])) {
-                        $hiringDetails->unavailabilityDays()->createMany(
-                            collect($data['unavailable_dates'])->map(fn($date) => ['date' => $date])->toArray()
-                        );
-                    }
                 }
+            }
+
+            // Handle unavailability durations for all products (both sale and hire)
+            if (isset($data['unavailability_durations']) && is_array($data['unavailability_durations'])) {
+                $unavailabilityData = collect($data['unavailability_durations'])->map(function($duration) {
+                    return [
+                        'start_date' => $duration['start_date'],
+                        'end_date' => $duration['end_date']
+                    ];
+                })->toArray();
+                
+                $product->unavailabilityDurations()->createMany($unavailabilityData);
             }
 
             if (isset($data['shipping_service_providers'])) {
@@ -196,15 +201,25 @@ class ProductService
             if ($data['type'] == 'hire') {
                 if (isset($data['hiring_details'])) {
                     $data['hiring_details']['product_id'] = $product->id;
-
                     $hiringDetails = $this->hiringDetailRepository->updateOrCreate($data['hiring_details']);
+                }
+            }
 
-                    if (isset($data['unavailable_dates'])) {
-                        $hiringDetails->unavailabilityDays()->delete();
-                        $hiringDetails->unavailabilityDays()->createMany(
-                            collect($data['unavailable_dates'])->map(fn($date) => ['date' => $date])->toArray()
-                        );
-                    }
+            // Handle unavailability durations for all products (both sale and hire)
+            if (isset($data['unavailability_durations'])) {
+                // Delete existing unavailability durations
+                $product->unavailabilityDurations()->delete();
+                
+                // Create new ones if provided
+                if (is_array($data['unavailability_durations']) && !empty($data['unavailability_durations'])) {
+                    $unavailabilityData = collect($data['unavailability_durations'])->map(function($duration) {
+                        return [
+                            'start_date' => $duration['start_date'],
+                            'end_date' => $duration['end_date']
+                        ];
+                    })->toArray();
+                    
+                    $product->unavailabilityDurations()->createMany($unavailabilityData);
                 }
             }
 
@@ -259,12 +274,16 @@ class ProductService
     public function delete($id)
     {
         $product = $this->productRepository->findById($id);
-        $hiringDetail = $this->hiringDetailRepository->findByProductId($id);
 
         $this->productFulfillmentOptionRepository->deleteByProductId($id);
         $this->productSizeRepository->deleteByProductId($id);
-        $this->hiringUnavailbilityDayRepository->deleteByHiringDetailId($hiringDetail->id);
-        $this->hiringDetailRepository->deleteByProductId($id);
+        $this->unavailabilityDurationRepository->deleteByProductId($id);
+        
+        // Delete hiring detail if exists
+        $hiringDetail = $this->hiringDetailRepository->findByProductId($id);
+        if ($hiringDetail) {
+            $this->hiringDetailRepository->deleteByProductId($id);
+        }
 
         $product->delete();
 

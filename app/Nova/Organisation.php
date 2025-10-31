@@ -10,21 +10,21 @@ use Laravel\Nova\Fields\Text;
 use Laravel\Nova\Fields\Textarea;
 use Laravel\Nova\Http\Requests\NovaRequest;
 
-class UserSchool extends Resource
+class Organisation extends Resource
 {
     /**
      * The model the resource corresponds to.
      *
-     * @var class-string<\App\Models\UserSchool>
+     * @var class-string<\App\Models\Organisation>
      */
-    public static $model = \App\Models\UserSchool::class;
+    public static $model = \App\Models\Organisation::class;
 
     /**
      * The single value that should be used to represent the resource when being displayed.
      *
      * @var string
      */
-    public static $title = 'id';
+    public static $title = 'name';
 
     /**
      * The columns that should be searched.
@@ -33,6 +33,7 @@ class UserSchool extends Resource
      */
     public static $search = [
         'id',
+        'name',
     ];
 
     /**
@@ -59,7 +60,7 @@ class UserSchool extends Resource
                     // Make it readonly if coming from a parent resource
                     return $request->viaResource === 'users' && $request->viaResourceId;
                 }),
-            Text::make('School Name', 'name')
+            Text::make('Organisation Name', 'name')
                 ->sortable()
                 ->rules('required', 'max:255'),
             Text::make('Website', 'website')

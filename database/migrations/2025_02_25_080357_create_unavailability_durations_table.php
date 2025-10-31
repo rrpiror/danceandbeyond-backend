@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use App\Models\Product;
 
 return new class extends Migration
 {
@@ -11,15 +12,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('user_schools', function (Blueprint $table) {
+        Schema::create('unavailability_durations', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
-            $table->string('website');
-            $table->string('description')->nullable();
+            $table->foreignIdFor(Product::class)->constrained()->cascadeOnDelete();
+            $table->date('start_date');
+            $table->date('end_date');
             $table->softDeletes();
             $table->timestamps();
-
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade')->onUpdate('cascade');
         });
     }
 
@@ -28,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('user_schools');
+        Schema::dropIfExists('unavailability_durations');
     }
 };

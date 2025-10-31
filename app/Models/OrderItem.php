@@ -52,4 +52,9 @@ class OrderItem extends Model
     {
         return $this->hasOneThrough(Colour::class, OrderItemColour::class, 'order_item_id', 'id', 'id', 'colour_id');
     }
+
+    public function hiringDetail()
+    {
+        return $this->hasOne(OrderItemHiringDetail::class);
+    }
 }

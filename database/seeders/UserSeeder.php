@@ -27,16 +27,16 @@ class UserSeeder extends Seeder
             'status' => 'active',
         ]);
 
-        // Create school users
+        // Create organisation users
         for ($i = 1; $i <= 5; $i++) {
             User::create([
-                'name' => "Dance School $i",
-                'email' => "school$i@example.com",
+                'name' => "Organisation $i",
+                'email' => "organisation$i@example.com",
                 'phone_number' => '+44123456' . str_pad($i, 3, '0', STR_PAD_LEFT),
                 'email_verified' => true,
                 'password' => Hash::make('password'),
                 'remember_token' => Str::random(10),
-                'type' => 'school',
+                'type' => 'organisation',
                 'status' => 'active',
             ]);
         }

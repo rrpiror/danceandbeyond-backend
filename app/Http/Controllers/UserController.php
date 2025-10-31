@@ -64,11 +64,11 @@ class UserController extends Controller
                 'email' => 'required|email',
                 'phone_number' => 'required|string|max:20',
                 'password' => 'required',
-                'type' => 'required|in:school,individual',
+                'type' => 'required|in:organisation,individual',
                 'address' => 'required',
-                'school' => 'required_if:type,school',
-                'school.name' => 'required_if:type,school',
-                'school.website' => 'required_if:type,school|url',
+                'organisation' => 'required_if:type,organisation',
+                'organisation.name' => 'required_if:type,organisation',
+                'organisation.website' => 'required_if:type,organisation|url',
                 'address.house_number' => 'required',
                 'address.street' => 'required',
                 'address.city' => 'required',
@@ -152,12 +152,12 @@ class UserController extends Controller
         try {
             $rules = [
                 'name' => 'required',
-                'phone_number' => 'required|string|max:20',
-                'type' => 'required|in:school,individual',
+                'phone_number' => 'optional|string|max:20',
+                'type' => 'required|in:organisation,individual',
                 'address' => 'required',
-                'school' => 'required_if:type,school',
-                'school.name' => 'required_if:type,school',
-                'school.website' => 'required_if:type,school|url',
+                'organisation' => 'required_if:type,organisation',
+                'organisation.name' => 'required_if:type,organisation',
+                'organisation.website' => 'required_if:type,organisation|url',
                 'address.*.house_number' => 'required',
                 'address.*.street' => 'required',
                 'address.*.city' => 'required',
@@ -368,5 +368,57 @@ class UserController extends Controller
             'message' => 'Your password has been reset successfully.',
             'error' => null,
         ], 200);
+    }
+
+    public function doesEmailExist(Request $request)
+    {
+        try {
+            $exists = $this->userService->doesEmailExist($request->email);
+            return apiResponse(true, $exists);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function doesPhoneNumberExist(Request $request)
+    {
+        try {
+            $exists = $this->userService->doesPhoneNumberExist($request->phone_number);
+            return apiResponse(true, $exists);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function doesPhoneNumberChangeExist(Request $request)
+    {
+        try {
+            $userId = auth()->user()->id;
+            $exists = $this->userService->doesPhoneNumberChangeExist($request->phone_number, $userId);
+            return apiResponse(true, $exists);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function doesUsernameExist(Request $request)
+    {
+        try {
+            $exists = $this->userService->doesUsernameExist($request->username);
+            return apiResponse(true, $exists);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
+
+    public function doesUsernameChangeExist(Request $request)
+    {
+        try {
+            $userId = auth()->user()->id;
+            $exists = $this->userService->doesUsernameChangeExist($request->username, $userId);
+            return apiResponse(true, $exists);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
     }
 }
