@@ -46,9 +46,9 @@ class User extends Authenticatable implements HasMedia
         return $this->belongsToMany(Address::class, 'user_addresses', 'user_id', 'address_id')->withPivot(['type'])->withTimestamps();
     }
 
-    public function school()
+    public function organisation()
     {
-        return $this->hasOne(UserSchool::class);
+        return $this->hasOne(Organisation::class);
     }
 
     public function favouriteProducts()

@@ -61,11 +61,12 @@ class OrderService
      * Get all orders with their related seller orders and order items
      * @param int $page
      * @param int $perPage
+     * @param array $filters
      * @return \Illuminate\Pagination\LengthAwarePaginator
      */
-    public function getAll($page = 1, $perPage = 15)
+    public function getAll($page = 1, $perPage = 15, $filters = [])
     {
-        return $this->orderRepository->getAll($page, $perPage);
+        return $this->orderRepository->getAll($page, $perPage, $filters);
     }
 
     public function findById($id)
@@ -144,8 +145,23 @@ class OrderService
             foreach ($itemsCollection as $item) {
                 $product = $products[$item['product_id']];
 
-                if ($product->type === 'hire' && $item['quantity'] < $product->hiringDetail->min_hire_days) {
-                    $errors[] = "Product {$product->name} requires minimum {$product->hiringDetail->min_hire_days} hire days";
+                // For hire products, validate hiring_days
+                if ($product->type === 'hire') {
+                    $hiringDays = $item['hiring_days'] ?? null;
+                    if (!$hiringDays || $hiringDays < $product->hiringDetail->min_hire_days) {
+                        $errors[] = "Product {$product->name} requires minimum {$product->hiringDetail->min_hire_days} hire days";
+                    }
+                }
+
+                // Validate stock availability for sizes
+                if (!empty($item['sizes']) && is_array($item['sizes'])) {
+                    foreach ($item['sizes'] as $size) {
+                        if (isset($size['id']) && isset($size['quantity'])) {
+                            $this->validateProductSizeStock($product->id, $size['id'], $size['quantity'], $product->name);
+                        }
+                    }
+                } elseif (!empty($item['size_id'])) {
+                    $this->validateProductSizeStock($product->id, $item['size_id'], $item['quantity'], $product->name);
                 }
 
                 $itemsArray[] = [
@@ -161,7 +177,7 @@ class OrderService
             }
 
             $data['amount'] = $itemsCollection->sum(function ($item) use ($products) {
-                return $products[$item['product_id']]->price * $item['quantity'];
+                return $this->calculateItemPrice($item, $products[$item['product_id']]);
             });
 
             // Create the main order
@@ -225,7 +241,7 @@ class OrderService
     {
         // Calculate total amount for this seller's items
         $totalAmount = collect($items)->sum(function ($item) use ($products) {
-            return $products[$item['product_id']]->price * $item['quantity'];
+            return $this->calculateItemPrice($item, $products[$item['product_id']]);
         });
 
         // Create seller order and attach initial pending status
@@ -246,6 +262,7 @@ class OrderService
      * @param SellerOrder $sellerOrder The seller order to create items for
      * @param Collection $items Items to create
      * @param Collection $products All products involved in the order
+     * @throws Exception
      */
     private function createOrderItems($sellerOrder, $items, $products)
     {
@@ -263,12 +280,22 @@ class OrderService
                 'product_snapshot' => json_encode($product_snapshot)
             ]);
 
-            // Process sizes array with quantities
+            // If it's a hire product, create hiring detail
+            if ($product->type === 'hire' && isset($item['hiring_days'])) {
+                $orderItem->hiringDetail()->create([
+                    'hiring_days' => $item['hiring_days']
+                ]);
+            }
+
+            // Process sizes array with quantities and reduce stock
             if (!empty($item['sizes']) && is_array($item['sizes'])) {
                 $sizesData = [];
                 foreach ($item['sizes'] as $size) {
                     if (isset($size['id']) && isset($size['quantity'])) {
                         $sizesData[$size['id']] = ['quantity' => $size['quantity']];
+                        
+                        // Reduce the product size quantity in stock
+                        $this->reduceProductSizeQuantity($product->id, $size['id'], $size['quantity']);
                     }
                 }
                 if (!empty($sizesData)) {
@@ -279,6 +306,9 @@ class OrderService
                 $orderItem->sizes()->sync([
                     $item['size_id'] => ['quantity' => $item['quantity']]
                 ]);
+                
+                // Reduce the product size quantity in stock
+                $this->reduceProductSizeQuantity($product->id, $item['size_id'], $item['quantity']);
             }
         }
     }
@@ -334,8 +364,8 @@ class OrderService
         ];
 
         if ($isHire && $product->hiringDetail) {
-            //TODO: get hiring days from request
-            $days = rand($product->hiringDetail->min_hire_days, 10);
+            // Get hiring days from request
+            $days = $item['hiring_days'] ?? $product->hiringDetail->min_hire_days;
 
             $product_snapshot['hiring_details'] = [
                 'days' => $days,
@@ -420,5 +450,104 @@ class OrderService
         } catch (Exception $ex) {
             throw new Exception($ex->getMessage(), $ex->getCode() ?? 500);
         }
+    }
+
+    /**
+     * Calculate the total price for an item
+     * For sale products: price * quantity
+     * For hire products: (price * quantity) + (extra days * additional_fee_per_day * quantity)
+     * 
+     * @param array $item Item data from request
+     * @param Product $product Product model
+     * @return float Total price for the item
+     */
+    private function calculateItemPrice($item, $product)
+    {
+        $basePrice = $product->price * $item['quantity'];
+
+        // For hire products with hiring days
+        if ($product->type === 'hire' && isset($item['hiring_days']) && $product->hiringDetail) {
+            $hiringDays = $item['hiring_days'];
+            $minHireDays = $product->hiringDetail->min_hire_days;
+            $additionalFeePerDay = $product->hiringDetail->additional_fee_per_day;
+
+            // Base price covers minHireDays, additional days are charged separately
+            if ($hiringDays > $minHireDays) {
+                $extraDays = $hiringDays - $minHireDays;
+                $additionalCost = $extraDays * $additionalFeePerDay * $item['quantity'];
+                return $basePrice + $additionalCost;
+            }
+        }
+
+        return $basePrice;
+    }
+
+    /**
+     * Validate that sufficient stock is available for a product size
+     * 
+     * @param int $productId Product ID
+     * @param int $sizeId Size ID
+     * @param int $requestedQuantity Requested quantity
+     * @param string $productName Product name for error message
+     * @throws Exception If insufficient stock
+     */
+    private function validateProductSizeStock($productId, $sizeId, $requestedQuantity, $productName)
+    {
+        // Find the product size record
+        $productSize = DB::table('product_sizes')
+            ->where('product_id', $productId)
+            ->where('size_id', $sizeId)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (!$productSize) {
+            throw new Exception("Size not available for product: {$productName}", 404);
+        }
+
+        // Check if sufficient quantity is available
+        if ($productSize->quantity < $requestedQuantity) {
+            // Get size name for better error message
+            $size = DB::table('sizes')->where('id', $sizeId)->first();
+            $sizeName = $size ? $size->name : "Size ID {$sizeId}";
+            
+            throw new Exception(
+                "Insufficient stock for {$productName} - {$sizeName}. Available: {$productSize->quantity}, Requested: {$requestedQuantity}", 
+                422
+            );
+        }
+    }
+
+    /**
+     * Reduce the quantity of a product size in stock
+     * 
+     * @param int $productId Product ID
+     * @param int $sizeId Size ID
+     * @param int $quantity Quantity to reduce
+     * @throws Exception If insufficient stock
+     */
+    private function reduceProductSizeQuantity($productId, $sizeId, $quantity)
+    {
+        // Find the product size record
+        $productSize = DB::table('product_sizes')
+            ->where('product_id', $productId)
+            ->where('size_id', $sizeId)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (!$productSize) {
+            throw new Exception("Product size not found for product ID {$productId} and size ID {$sizeId}", 404);
+        }
+
+        // Check if sufficient quantity is available (double-check as safety measure)
+        if ($productSize->quantity < $quantity) {
+            throw new Exception("Insufficient stock for product ID {$productId}, size ID {$sizeId}. Available: {$productSize->quantity}, Requested: {$quantity}", 422);
+        }
+
+        // Reduce the quantity
+        DB::table('product_sizes')
+            ->where('product_id', $productId)
+            ->where('size_id', $sizeId)
+            ->whereNull('deleted_at')
+            ->decrement('quantity', $quantity);
     }
 }

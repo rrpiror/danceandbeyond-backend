@@ -2,7 +2,7 @@
 
 namespace App\Nova;
 
-use App\Nova\UserSchool;
+use App\Nova\Organisation;
 use Ebess\AdvancedNovaMediaLibrary\Fields\Images;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -69,10 +69,10 @@ class User extends Resource
 
 			Gravatar::make()->maxWidth(50),
 
-			Select::make('Type')->options([
-				'individual' => 'Individual',
-				'school' => 'Dance School'
-			])->rules('required'),
+	Select::make('Type')->options([
+		'individual' => 'Individual',
+		'organisation' => 'Organisation'
+	])->rules('required'),
 
 			Text::make('Name')
 				->sortable()
@@ -93,13 +93,13 @@ class User extends Resource
 				->creationRules($this->passwordRules())
 				->updateRules($this->optionalPasswordRules()),
 
-			HasOne::make('Dance School Details', 'school', UserSchool::class)
+			HasOne::make('Organisation Details', 'organisation', Organisation::class)
 				->hideFromIndex()
 				->canSee(function ($request) {
 					// For detail view
 					if ($request->resourceId) {
 						$model = \App\Models\User::find($request->resourceId);
-						return $model && $model->type === 'school';
+						return $model && $model->type === 'organisation';
 					}
 
 					// For create/edit forms
@@ -158,9 +158,9 @@ class User extends Resource
 	{
 		$fields = parent::fillForUpdate($request, $model);
 
-		// Store data in user_schools if user type is 'school'
-		if ($request->input('type') === 'school') {
-			UserSchool::updateOrCreate(
+		// Store data in organisations if user type is 'organisation'
+		if ($request->input('type') === 'organisation') {
+			\App\Models\Organisation::updateOrCreate(
 				['user_id' => $model->id], // Find existing record
 				[
 					'website' => $request->input('website'),
@@ -176,9 +176,9 @@ class User extends Resource
 	{
 		$fields = parent::fillForCreation($request, $model);
 
-		// Store data in user_schools if user type is 'school'
-		if ($request->input('type') === 'school') {
-			UserSchool::updateOrCreate(
+		// Store data in organisations if user type is 'organisation'
+		if ($request->input('type') === 'organisation') {
+			\App\Models\Organisation::updateOrCreate(
 				['user_id' => $model->id], // Find existing record
 				[
 					'website' => $request->input('website'),

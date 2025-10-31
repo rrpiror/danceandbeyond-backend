@@ -99,6 +99,20 @@ class ProductSeeder extends Seeder
                     ->usingFileName(uniqid() . '.jpg')
                     ->toMediaCollection('images');
             }
+
+            // Add unavailability durations for some products (30% chance)
+            if (rand(0, 9) < 3) {
+                $numDurations = rand(1, 3); // 1 to 3 unavailability durations
+                for ($k = 0; $k < $numDurations; $k++) {
+                    $startDate = now()->addDays(rand(1, 60));
+                    $endDate = $startDate->copy()->addDays(rand(1, 14));
+                    
+                    $product->unavailabilityDurations()->create([
+                        'start_date' => $startDate->format('Y-m-d'),
+                        'end_date' => $endDate->format('Y-m-d'),
+                    ]);
+                }
+            }
         }
     }
 } 

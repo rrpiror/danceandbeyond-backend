@@ -32,4 +32,14 @@ class UserRepository
     {
         return $this->user->where('reset_password_token', $token)->first();
     }
+
+    public function findByPhoneNumber($phoneNumber)
+    {
+        return $this->user->where('phone_number', $phoneNumber)->first();
+    }
+
+    public function findByUsername($username)
+    {
+        return $this->user->where('username', $username)->first();
+    }
 }

@@ -4,21 +4,18 @@ namespace App\Nova;
 
 use Illuminate\Http\Request;
 use Laravel\Nova\Fields\ID;
-use Laravel\Nova\Fields\Select;
-use Laravel\Nova\Http\Requests\NovaRequest;
-use App\Models\Product;
-use Laravel\Nova\Fields\HasOne;
+use Laravel\Nova\Fields\BelongsTo;
 use Laravel\Nova\Fields\Number;
-use Laravel\Nova\Fields\Textarea;
+use Laravel\Nova\Http\Requests\NovaRequest;
 
-class OrderItem extends Resource
+class OrderItemHiringDetail extends Resource
 {
     /**
      * The model the resource corresponds to.
      *
-     * @var class-string<\App\Models\OrderItem>
+     * @var class-string<\App\Models\OrderItemHiringDetail>
      */
-    public static $model = \App\Models\OrderItem::class;
+    public static $model = \App\Models\OrderItemHiringDetail::class;
 
     /**
      * The single value that should be used to represent the resource when being displayed.
@@ -46,18 +43,14 @@ class OrderItem extends Resource
         return [
             ID::make()->sortable(),
 
-            Select::make('Product Id')->options(Product::pluck('name', 'id'))->rules('required')->sortable()->displayUsingLabels(),
+            BelongsTo::make('Order Item', 'orderItem', OrderItem::class)
+                ->rules('required')
+                ->sortable(),
 
-            Number::make('Quantity')->rules('required')->min(1)->rules('required'),
-
-            Number::make('Price')->rules('required')->min(1)->rules('required'),
-
-            Textarea::make('Product Snapshot')->rules('required'),
-
-            HasOne::make('Order Item Sizes', 'orderItemSizes', OrderItemSize::class),
-
-            HasOne::make('Hiring Detail', 'hiringDetail', OrderItemHiringDetail::class),
-
+            Number::make('Hiring Days')
+                ->rules('required', 'min:1')
+                ->sortable()
+                ->help('Number of days the item is being hired for'),
         ];
     }
 

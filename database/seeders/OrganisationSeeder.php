@@ -3,21 +3,21 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use App\Models\UserSchool;
+use App\Models\Organisation;
 use Illuminate\Database\Seeder;
 
-class UserSchoolSeeder extends Seeder
+class OrganisationSeeder extends Seeder
 {
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
-        // Get all school type users
-        $schoolUsers = User::where('type', 'school')->get();
+        // Get all organisation type users
+        $organisationUsers = User::where('type', 'organisation')->get();
 
-        foreach ($schoolUsers as $user) {
-            UserSchool::create([
+        foreach ($organisationUsers as $user) {
+            Organisation::create([
                 'user_id' => $user->id,
                 'name' => $user->name,
                 'website' => 'https://www.' . strtolower(str_replace(' ', '', $user->name)) . '.com',
@@ -25,4 +25,4 @@ class UserSchoolSeeder extends Seeder
             ]);
         }
     }
-} 
+}

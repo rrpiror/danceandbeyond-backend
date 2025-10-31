@@ -17,7 +17,7 @@ use App\Nova\ProductColour;
 use App\Nova\ProductFulfillmentOption;
 use App\Nova\ProductSize;
 use App\Nova\Size;
-use App\Nova\UserSchool;
+use App\Nova\Organisation;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
 use Laravel\Fortify\Features;
@@ -40,10 +40,10 @@ class NovaServiceProvider extends NovaApplicationServiceProvider
 
 		Nova::mainMenu(function (Request $request) {
 
-			$usersResources = [
-				MenuItem::resource(\App\Nova\User::class),
-				MenuItem::resource(UserSchool::class),
-			];
+		$usersResources = [
+			MenuItem::resource(\App\Nova\User::class),
+			MenuItem::resource(Organisation::class),
+		];
 
 			$productsResources = [
 				MenuItem::resource(Product::class),

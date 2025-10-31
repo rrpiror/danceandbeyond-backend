@@ -11,14 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('hiring_unavailability_days', function (Blueprint $table) {
+        Schema::create('organisations', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('hiring_detail_id');
-            $table->date('date');
+            $table->unsignedBigInteger('user_id');
+            $table->string('name');
+            $table->string('website');
+            $table->string('description')->nullable();
             $table->softDeletes();
             $table->timestamps();
 
-            $table->foreign('hiring_detail_id')->references('id')->on('hiring_details')->onDelete('CASCADE')->onUpdate('CASCADE');
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade')->onUpdate('cascade');
         });
     }
 
@@ -27,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('hiring_unavailability_days');
+        Schema::dropIfExists('organisations');
     }
 };

@@ -15,9 +15,4 @@ class HiringDetail extends Model
         'min_hire_days',
         'additional_fee_per_day'
     ];
-
-    public function unavailabilityDays()
-    {
-        return $this->hasMany(HiringUnavailabilityDay::class, 'hiring_detail_id');
-    }
 }
