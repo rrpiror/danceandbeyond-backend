@@ -68,11 +68,12 @@ class UserController extends Controller
                 'address' => 'required',
                 'organisation' => 'required_if:type,organisation',
                 'organisation.name' => 'required_if:type,organisation',
-                'organisation.website' => 'required_if:type,organisation|url',
+                'organisation.website' => 'required_if:type,organisation',
                 'address.house_number' => 'required',
                 'address.street' => 'required',
                 'address.city' => 'required',
                 'address.postcode' => ['required', 'regex:/^([Gg][Ii][Rr] 0[Aa]{2})|((([A-Za-z][0-9]{1,2})|(([A-Za-z][A-Ha-hJ-Yj-y][0-9]{1,2})|(([A-Za-z][0-9][A-Za-z])|([A-Za-z][A-Ha-hJ-Yj-y][0-9][A-Za-z]?))))\s?[0-9][A-Za-z]{2})$/'],
+                'profile_image' => 'sometimes|string',
             ];
 
             $validation = $this->validationService->validate($request, $rules);

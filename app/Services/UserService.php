@@ -91,8 +91,6 @@ class UserService
             }
 
             if (isset($data['profile_image']) && $data['profile_image']) {
-                $imageType = explode(';', $data['profile_image'])[0];
-                $imageType = explode('/', $imageType)[1];
 
                 // if (!in_array(strtolower($imageType), ['jpg', 'jpeg', 'png'])) {
                 //     throw new Exception('Invalid image type. Only JPG, JPEG and PNG are allowed.', 422);
