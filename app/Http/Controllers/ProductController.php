@@ -6,6 +6,7 @@ use App\Services\ProductService;
 use App\Services\ValidationService;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ProductController extends Controller
 {
@@ -39,16 +40,29 @@ class ProductController extends Controller
         }
     }
 
-    public function getProductsByUserId()
+
+    public function getProductsByUserId($userId)
     {
         try {
-            $products = $this->productService->getProductsByUserId();
+            $products = $this->productService->getProductsByUserId($userId);
             return apiResponse(true, $products);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
         }
     }
-
+    public function getMyProducts(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return apiResponse(false, null, 'User not found', 5, 404);
+            }
+            $products = $this->productService->getProductsByUserId($user->id);
+            return apiResponse(true, $products);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+        }
+    }
     // Get all favourite products
     public function favouriteProducts()
     {

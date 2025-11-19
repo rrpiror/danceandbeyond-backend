@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 //for testing purposes
 Route::post('/seed', [SeederController::class, 'seed']);
 
+// Authentication endpoints
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/signup', [UserController::class, 'signup']);
 // Route::post('/send-forgot-password-link', [UserController::class, 'sendForgotPasswordLink']);
@@ -27,51 +28,90 @@ Route::post('/signup', [UserController::class, 'signup']);
 Route::post('/forgot-password', [UserController::class, 'forgotPassword']);
 Route::post('/reset-password', [UserController::class, 'resetPasswordViaOtp']);
 
-// Validation endpoints (public)
+// Public validation endpoints
 Route::post('/does-email-exist', [UserController::class, 'doesEmailExist']);
 Route::post('/does-phone-number-exist', [UserController::class, 'doesPhoneNumberExist']);
 Route::post('/does-username-exist', [UserController::class, 'doesUsernameExist']);
 
+// Stripe webhook (public)
 Route::post('/stripe/webhook', [StripeWebHookController::class, 'handleWebhook']);
 
+// Public metadata endpoints (for dropdowns, filters, etc.)
+Route::get('/colours', [ColourController::class, 'index']);
+Route::get('/brands', [BrandController::class, 'index']);
+Route::get('/conditions', [ConditionController::class, 'index']);
+Route::get('/categories', [CategoryController::class, 'index']);
+Route::get('/sizes', [SizeController::class, 'index']);
+Route::get('/order-statuses', [OrderController::class, 'getAllOrderStatuses']);
+
+
+// ============================================
+// AUTHENTICATED ROUTES (Require Login)
+// ============================================
+
 Route::middleware(['auth:api'])->group(function () {
+    // Current user
     Route::get('/current-user', [UserController::class, 'getCurrentUser']);
+    
+    // Stripe connection
     Route::get('/stripe/connect', [UserController::class, 'stripeConnect']);
+    
+    // Seller endpoints
     Route::get('/seller/info', [OrderController::class, 'getSellerInfo']);
     Route::get('/seller/orders', [OrderController::class, 'getSellerOrders']);
     Route::get('/seller/orders/{id}', [OrderController::class, 'getSellerOrderById']);
     Route::post('/seller/orders/{id}/status', [OrderController::class, 'addStatusToSellerOrder']);
-    Route::get('/order-statuses', [OrderController::class, 'getAllOrderStatuses']);
-    Route::get('/colours', [ColourController::class, 'index']);
-    Route::get('/brands', [BrandController::class, 'index']);
-    Route::get('/conditions', [ConditionController::class, 'index']);
-    Route::get('/categories', [CategoryController::class, 'index']);
-    Route::get('/sizes', [SizeController::class, 'index']);
+    
+    // Payment & fulfillment options (authenticated)
     Route::get('/fulfillment-options', [FulfillmentOptionController::class, 'index']);
     Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
-    Route::apiResource('/orders', OrderController::class);
     Route::get('/shipping-service-providers', [ShippingServiceProviderController::class, 'index']);
     
+    // Order management (authenticated)
+    Route::apiResource('/orders', OrderController::class);
+    
+    // Product management (authenticated)
     Route::prefix('products')->group(function () {
+        // Specific routes MUST come before wildcard routes
+        Route::get('/my-products', [ProductController::class, 'getMyProducts']);
         Route::get('/favourite', [ProductController::class, 'favouriteProducts']);
         Route::post('/favourite/{id}', [ProductController::class, 'addFavourite']);
         Route::delete('/favourite/{id}', [ProductController::class, 'removeFavourite']);
-        Route::get('/my-products', [ProductController::class, 'getProductsByUserId']);
         Route::get('/feature/{id}', [ProductController::class, 'featureThisItem']);
-        Route::apiResource('/', ProductController::class)->parameters(['' => 'product']);
+        
+        // CRUD operations
+        Route::post('/', [ProductController::class, 'store']);
+        Route::put('/{product}', [ProductController::class, 'update']);
+        Route::delete('/{product}', [ProductController::class, 'destroy']);
     });
 
+    // User profile & account management (authenticated)
     Route::prefix('user')->group(function () {
-        Route::post('/reviews', [UserController::class, 'addReview']);
-        Route::get('/reviews/{sellerId}', [UserController::class, 'getReviews']);
-        Route::put('/change-password', [UserController::class, 'changePassword']);
-        Route::delete('/delete-account', [UserController::class, 'deleteAccount']);
         Route::get('/profile', [UserController::class, 'getProfile']);
         Route::put('/profile', [UserController::class, 'updateProfile']);
-        Route::get('/{id}', [UserController::class, 'findById']);
+        Route::put('/change-password', [UserController::class, 'changePassword']);
+        Route::delete('/delete-account', [UserController::class, 'deleteAccount']);
+        
+        // Reviews (writing requires auth, reading is public)
+        Route::post('/reviews', [UserController::class, 'addReview']);
     });
 
     // Validation endpoints (authenticated - for checking changes)
     Route::post('/does-phone-number-change-exist', [UserController::class, 'doesPhoneNumberChangeExist']);
     Route::post('/does-username-change-exist', [UserController::class, 'doesUsernameChangeExist']);
+});
+
+// ============================================
+// PUBLIC PRODUCT ROUTES (Must be at the end to avoid conflicts with authenticated routes)
+// ============================================
+Route::prefix('products')->group(function () {
+    Route::get('/', [ProductController::class, 'index']);
+    Route::get('/{product}', [ProductController::class, 'show']);
+});
+
+
+// Public user endpoints
+Route::prefix('user')->group(function () {
+    Route::get('/reviews/{sellerId}', [UserController::class, 'getReviews']);
+    Route::get('/{id}', [UserController::class, 'findById']);
 });

@@ -290,10 +290,9 @@ class ProductService
         return true;
     }
 
-    public function getProductsByUserId()
+    public function getProductsByUserId($userId)
     {
-        $user = Auth::user();
-        return $this->productRepository->findProductsByUserId($user->id);
+        return $this->productRepository->findProductsByUserId($userId);
     }
 
     public function featureThisItem($id)
