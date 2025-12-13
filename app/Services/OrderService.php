@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\ProductVariant;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 use App\Repositories\AddressRepository;
 use App\Repositories\OrderItemRepository;
 use App\Repositories\OrderRepository;
@@ -16,6 +18,10 @@ use App\Services\PaymentService;
 use App\Repositories\UserAddressRepository;
 use App\Repositories\PayoutTransactionRepository;
 use App\Models\StripeIntent;
+use App\Models\Product;
+use App\Models\SellerOrder;
+use App\Models\Order;
+use App\Http\Resources\OrderResource;
 
 /**
  * OrderService handles all order-related business logic including creation, updates, and retrieval of orders.
@@ -108,7 +114,7 @@ class OrderService
      * 4. Payment intent creation
      * 
      * @param array $data Order details including items, addresses, and payment info
-     * @return array Payment intent details
+     * @return OrderResource Payment intent details
      * @throws Exception
      */
     public function create(array $data)
@@ -119,7 +125,7 @@ class OrderService
             // Get authenticated user ID
             $userId = Auth::id();
             $data['user_id'] = $userId;
-            
+
             $data['payment_method_id'] = 1; // Stripe is the default payment method
 
             // Fetch all products involved in the order
@@ -129,22 +135,22 @@ class OrderService
             // Store billing and shipping addresses
             $billingAddress = $this->addressRepository->findById($data['billing_address_id']);
             $shippingAddress = $this->addressRepository->findById($data['shipping_address_id']);
-            if($billingAddress) {
-                $data['addresses']['billing'] = $billingAddress;
+            $addresses = [];
+            if ($billingAddress) {
+                $addresses['billing'] = $billingAddress;
             }
-            if($shippingAddress) {
-                $data['addresses']['shipping'] = $shippingAddress;
+            if ($shippingAddress) {
+                $addresses['shipping'] = $shippingAddress;
             }
-            $data['addresses'] = json_encode($data['addresses']);
+            $data['addresses'] = json_encode($addresses);
 
             // Calculate total amount and prepare items for payment
             $itemsCollection = collect($data['items']);
-            $itemsArray = [];
+            $itemsArrayForStripe = [];
             $errors = [];
 
             foreach ($itemsCollection as $item) {
                 $product = $products[$item['product_id']];
-
                 // For hire products, validate hiring_days
                 if ($product->type === 'hire') {
                     $hiringDays = $item['hiring_days'] ?? null;
@@ -153,20 +159,16 @@ class OrderService
                     }
                 }
 
-                // Validate stock availability for sizes
-                if (!empty($item['sizes']) && is_array($item['sizes'])) {
-                    foreach ($item['sizes'] as $size) {
-                        if (isset($size['id']) && isset($size['quantity'])) {
-                            $this->validateProductSizeStock($product->id, $size['id'], $size['quantity'], $product->name);
-                        }
-                    }
-                } elseif (!empty($item['size_id'])) {
-                    $this->validateProductSizeStock($product->id, $item['size_id'], $item['quantity'], $product->name);
+                // Validate stock availability
+                if (isset($item['variant_id']) && isset($item['quantity'])) {
+                    $this->validateProductVariantStock($product->id, $item['variant_id'], $item['quantity'], $product->name);
                 }
 
-                $itemsArray[] = [
+                $price = $this->calculateSingleItemPrice($item, $product);
+
+                $itemsArrayForStripe[] = [
                     'quantity' => $item['quantity'],
-                    'price' => $product->price * 100,
+                    'price' => $price * 100,
                     'name' => $product->name,
                     'product_id' => $item['product_id']
                 ];
@@ -195,7 +197,7 @@ class OrderService
             // Create payment intent for the order
             $paymentIntentData = $this->paymentService->createStripePaymentIntent(
                 $order->toArray(),
-                $itemsArray
+                $itemsArrayForStripe
             );
 
             // Store the stripe intent in the database
@@ -203,7 +205,7 @@ class OrderService
                 'order_id' => $order->id,
                 'payment_intent_id' => $paymentIntentData['payment_intent_id'],
                 'client_secret' => $paymentIntentData['client_secret'],
-                'amount' => $data['amount'], // Store amount in regular currency format (to match orders table)
+                'amount' => $data['amount']* 100,
                 'currency' => $paymentIntentData['currency'] ?? 'gbp',
                 'status' => 'requires_payment_method', // Default status for new payment intents
                 'metadata' => [
@@ -214,15 +216,7 @@ class OrderService
 
             DB::commit();
 
-            return [
-                'order' => $order->load('stripeIntent'),
-                'client_secret' => $paymentIntentData['client_secret'],
-                'payment_intent_id' => $paymentIntentData['payment_intent_id'],
-                'amount' => $paymentIntentData['amount'],
-                'currency' => $paymentIntentData['currency'],
-                // Keep backward compatibility
-                'stripe_url' => null, // We'll handle this in Flutter now
-            ];
+            return new OrderResource($order->load($this->orderRepository->orderDetailedRelations));
         } catch (Exception $ex) {
             DB::rollBack();
             throw new Exception($ex->getMessage(), 422);
@@ -251,7 +245,7 @@ class OrderService
             'amount' => $totalAmount
         ]);
 
-        $pendingStatus = $this->orderStatusRepository->findById(env('ORDER_STATUS_PAYMENT_PENDING_ID'));
+        $pendingStatus = $this->orderStatusRepository->findById(env('ORDER_STATUS_PENDING_ID'));
         $sellerOrder->statuses()->attach($pendingStatus->id);
 
         return $sellerOrder;
@@ -275,6 +269,7 @@ class OrderService
             $orderItem = $this->orderItemRepository->create([
                 'seller_order_id' => $sellerOrder->id,
                 'product_id' => $product->id,
+                'variant_id' => $item['variant_id'],
                 'quantity' => $item['quantity'],
                 'price' => $product->price,
                 'product_snapshot' => json_encode($product_snapshot)
@@ -287,28 +282,10 @@ class OrderService
                 ]);
             }
 
-            // Process sizes array with quantities and reduce stock
-            if (!empty($item['sizes']) && is_array($item['sizes'])) {
-                $sizesData = [];
-                foreach ($item['sizes'] as $size) {
-                    if (isset($size['id']) && isset($size['quantity'])) {
-                        $sizesData[$size['id']] = ['quantity' => $size['quantity']];
-                        
-                        // Reduce the product size quantity in stock
-                        $this->reduceProductSizeQuantity($product->id, $size['id'], $size['quantity']);
-                    }
-                }
-                if (!empty($sizesData)) {
-                    $orderItem->sizes()->sync($sizesData);
-                }
-            } elseif (!empty($item['size_id'])) {
-                // Fallback: if no sizes array but size_id exists, use item quantity
-                $orderItem->sizes()->sync([
-                    $item['size_id'] => ['quantity' => $item['quantity']]
-                ]);
-                
-                // Reduce the product size quantity in stock
-                $this->reduceProductSizeQuantity($product->id, $item['size_id'], $item['quantity']);
+            // process variant
+            if (isset($item['variant_id'])) {
+                $variant = ProductVariant::find($item['variant_id']);
+                $this->reduceProductVariantQuantity($variant->id, $item['quantity']);
             }
         }
     }
@@ -318,13 +295,15 @@ class OrderService
         $isHire = $product->type === 'hire';
         $sizes = $item['sizes'] ?? [];
         $colour = $item['colour'] ?? null;
-        
+        $variants = $product->variants->load(['colour', 'size']);
+
         $product_snapshot = [
             'id' => $product->id,
             'name' => $product->name,
             'description' => $product->description,
             'price' => $product->price,
             'type' => $product->type,
+            'variants' => $variants,
             'media' => $product->media->map(function ($media) {
                 return [
                     'id' => $media->id,
@@ -361,6 +340,10 @@ class OrderService
                 'id' => $product->condition_id,
                 'name' => $product->condition ? $product->condition->name : null,
             ],
+            'user' => [
+                'id' => $product->user_id,
+                'name' => $product->user ? $product->user->name : null,
+            ],
         ];
 
         if ($isHire && $product->hiringDetail) {
@@ -372,10 +355,6 @@ class OrderService
                 ...$product->hiringDetail->toArray(),
             ];
         }
-
-        $product_snapshot['sizes'] = $sizes;
-
-        $product_snapshot['colour'] = $colour;
 
         return $product_snapshot;
     }
@@ -430,13 +409,13 @@ class OrderService
     {
         try {
             $sellerOrder = $this->sellerOrderRepository->findByIdRaw($sellerOrderId);
-            
+
             if (!$sellerOrder) {
                 throw new Exception('Seller order not found.', 404);
             }
 
             $status = $this->orderStatusRepository->findById($statusId);
-            
+
             if (!$status) {
                 throw new Exception('Status not found.', 404);
             }
@@ -463,7 +442,14 @@ class OrderService
      */
     private function calculateItemPrice($item, $product)
     {
-        $basePrice = $product->price * $item['quantity'];
+        $singleItemPrice = $this->calculateSingleItemPrice($item, $product);
+        $quantityPrice = $singleItemPrice * $item['quantity'];
+        return $quantityPrice;
+    }
+
+    private function calculateSingleItemPrice($item, $product)
+    {
+        $basePrice = $product->price;
 
         // For hire products with hiring days
         if ($product->type === 'hire' && isset($item['hiring_days']) && $product->hiringDetail) {
@@ -474,7 +460,7 @@ class OrderService
             // Base price covers minHireDays, additional days are charged separately
             if ($hiringDays > $minHireDays) {
                 $extraDays = $hiringDays - $minHireDays;
-                $additionalCost = $extraDays * $additionalFeePerDay * $item['quantity'];
+                $additionalCost = $extraDays * $additionalFeePerDay;
                 return $basePrice + $additionalCost;
             }
         }
@@ -491,27 +477,19 @@ class OrderService
      * @param string $productName Product name for error message
      * @throws Exception If insufficient stock
      */
-    private function validateProductSizeStock($productId, $sizeId, $requestedQuantity, $productName)
+    private function validateProductVariantStock($productId, $variantId, $requestedQuantity, $productName)
     {
-        // Find the product size record
-        $productSize = DB::table('product_sizes')
-            ->where('product_id', $productId)
-            ->where('size_id', $sizeId)
-            ->whereNull('deleted_at')
-            ->first();
+        // Find the product variant record
+        $productVariant = ProductVariant::with(['size', 'colour'])->find($variantId);
 
-        if (!$productSize) {
+        if (!$productVariant) {
             throw new Exception("Size not available for product: {$productName}", 404);
         }
 
         // Check if sufficient quantity is available
-        if ($productSize->quantity < $requestedQuantity) {
-            // Get size name for better error message
-            $size = DB::table('sizes')->where('id', $sizeId)->first();
-            $sizeName = $size ? $size->name : "Size ID {$sizeId}";
-            
+        if ($productVariant->quantity < $requestedQuantity) {
             throw new Exception(
-                "Insufficient stock for {$productName} - {$sizeName}. Available: {$productSize->quantity}, Requested: {$requestedQuantity}", 
+                "Insufficient stock for {$productName} - {$productVariant->colour->name} {$productVariant->size->name}. Available: {$productVariant->quantity}, Requested: {$requestedQuantity}",
                 422
             );
         }
@@ -525,29 +503,15 @@ class OrderService
      * @param int $quantity Quantity to reduce
      * @throws Exception If insufficient stock
      */
-    private function reduceProductSizeQuantity($productId, $sizeId, $quantity)
+
+    private function reduceProductVariantQuantity($variantId, $quantity)
     {
-        // Find the product size record
-        $productSize = DB::table('product_sizes')
-            ->where('product_id', $productId)
-            ->where('size_id', $sizeId)
-            ->whereNull('deleted_at')
-            ->first();
-
-        if (!$productSize) {
-            throw new Exception("Product size not found for product ID {$productId} and size ID {$sizeId}", 404);
+        $variant = ProductVariant::find($variantId);
+    
+        if(!$variant) {
+            throw new Exception("Product variant not found for variant ID {$variantId}", 404);
         }
 
-        // Check if sufficient quantity is available (double-check as safety measure)
-        if ($productSize->quantity < $quantity) {
-            throw new Exception("Insufficient stock for product ID {$productId}, size ID {$sizeId}. Available: {$productSize->quantity}, Requested: {$quantity}", 422);
-        }
-
-        // Reduce the quantity
-        DB::table('product_sizes')
-            ->where('product_id', $productId)
-            ->where('size_id', $sizeId)
-            ->whereNull('deleted_at')
-            ->decrement('quantity', $quantity);
+        $variant->decrement('quantity', $quantity);
     }
 }

@@ -2,8 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Colour;
-use App\Models\Product;
 use App\Models\ProductColour;
 use Illuminate\Database\Seeder;
 
@@ -14,28 +12,26 @@ class ProductColourSeeder extends Seeder
      */
     public function run(): void
     {
-        $products = Product::all();
-        $colours = Colour::all();
-        $colourCount = $colours->count();
-        
-        foreach ($products as $product) {
-            // Each product gets 1-3 colours
-            $numColours = rand(1, 3);
-            $usedColourIds = [];
-            
-            for ($i = 0; $i < $numColours; $i++) {
-                // Get a random colour that hasn't been used for this product yet
-                do {
-                    $colourId = $colours[rand(0, $colourCount - 1)]->id;
-                } while (in_array($colourId, $usedColourIds));
-                
-                $usedColourIds[] = $colourId;
-                
-                ProductColour::create([
-                    'product_id' => $product->id,
-                    'colour_id' => $colourId,
-                ]);
-            }
+        $colours = [
+            ['name' => 'Black', 'hexcode' => '#000000'],
+            ['name' => 'White', 'hexcode' => '#FFFFFF'],
+            ['name' => 'Red', 'hexcode' => '#FF0000'],
+            ['name' => 'Blue', 'hexcode' => '#0000FF'],
+            ['name' => 'Green', 'hexcode' => '#008000'],
+            ['name' => 'Yellow', 'hexcode' => '#FFFF00'],
+            ['name' => 'Purple', 'hexcode' => '#800080'],
+            ['name' => 'Pink', 'hexcode' => '#FFC0CB'],
+            ['name' => 'Orange', 'hexcode' => '#FFA500'],
+            ['name' => 'Brown', 'hexcode' => '#A52A2A'],
+            ['name' => 'Grey', 'hexcode' => '#808080'],
+            ['name' => 'Navy', 'hexcode' => '#000080'],
+            ['name' => 'Teal', 'hexcode' => '#008080'],
+            ['name' => 'Lavender', 'hexcode' => '#E6E6FA'],
+            ['name' => 'Beige', 'hexcode' => '#F5F5DC'],
+        ];
+
+        foreach ($colours as $colour) {
+            ProductColour::create($colour);
         }
     }
-} 
+}

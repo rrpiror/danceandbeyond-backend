@@ -20,8 +20,8 @@ class ProductController extends Controller
         'description' => 'required',
         'price' => 'required',
         'type' => 'required',
-        'fulfillment_options' => 'required',
-        'sizes' => 'required'
+        'fulfillment_option_ids' => 'required',
+        'variants' => 'required'
     ];
 
     public function __construct(ProductService $productService, ValidationService $validationService)

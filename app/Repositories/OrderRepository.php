@@ -11,6 +11,14 @@ class OrderRepository
 {
     protected Order $order;
 
+    public $orderDetailedRelations = [
+        'stripeIntent',
+        'sellerOrders.orderItems.variant.colour',
+        'sellerOrders.statuses',
+        'sellerOrders.orderItems.variant.size'
+    ];
+
+
     public function __construct(Order $order)
     {
         $this->order = $order;
@@ -18,8 +26,8 @@ class OrderRepository
 
     public function findById($id)
     {
-        $orderData = $this->order->with('sellerOrders.statuses', 'orderItems.product', 'stripeIntent')->where('user_id', Auth::user()->id)->find($id);
-        
+        $orderData = $this->order->with($this->orderDetailedRelations)->where('user_id', Auth::user()->id)->find($id);
+
         return new OrderResource($orderData);
     }
 
@@ -31,12 +39,12 @@ class OrderRepository
     public function getAll($page = 1, $perPage = 15, $filters = [])
     {
         $query = $this->order->where('user_id', Auth::user()->id)
-            ->with(['sellerOrders.statuses', 'sellerOrders.orderItems.product', 'stripeIntent']);
-        
+            ->with($this->orderDetailedRelations);
+
         // Apply type filter if provided
         if (!empty($filters['type'])) {
             $types = explode(',', $filters['type']);
-            
+
             // Filter orders based on product types in order items
             $query->whereHas('sellerOrders.orderItems.product', function ($q) use ($types) {
                 $productTypes = [];
@@ -47,14 +55,14 @@ class OrderRepository
                         $productTypes[] = 'sale';
                     }
                 }
-                
+
                 if (!empty($productTypes)) {
                     \Log::info('Product types: ' . json_encode($productTypes));
                     $q->whereIn('type', $productTypes);
                 }
             });
         }
-        
+
         // Apply sorting
         $sortBy = $filters['sort_by'] ?? 'newest';
         if ($sortBy === 'oldest') {
@@ -62,15 +70,15 @@ class OrderRepository
         } else {
             $query->latest();
         }
-        
+
         $ordersData = $query->paginate($perPage, ['*'], 'page', $page);
-        
+
         // Transform the collection using OrderCollectionResource
         $ordersCollection = new OrderCollectionResource($ordersData->getCollection());
-        
+
         // Replace the collection in the paginated data with the transformed collection
         $ordersData->setCollection(collect($ordersCollection->toArray(request())));
-        
+
         return $ordersData;
     }
 }

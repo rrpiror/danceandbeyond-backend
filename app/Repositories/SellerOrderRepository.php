@@ -69,7 +69,8 @@ class SellerOrderRepository
     {
         $sellerOrder = $this->sellerOrder->find($id)->load([
             'orderItems',
-            'orderItems.sizes',
+            'orderItems.variant.size',
+            'orderItems.variant.colour',
             'order',
             'order.user:id,name,email,phone_number',
             'seller:id,name,email,phone_number',

@@ -13,6 +13,7 @@ class OrderItem extends Model
     protected $fillable = [
         'seller_order_id',
         'product_id',
+        'variant_id',
         'quantity',
         'price',
         'product_snapshot'
@@ -32,25 +33,9 @@ class OrderItem extends Model
         return $this->belongsTo(Product::class);
     }
 
-    public function orderItemSizes()
+    public function variant()
     {
-        return $this->hasMany(OrderItemSize::class);
-    }
-
-    public function orderItemColours()
-    {
-        return $this->hasMany(OrderItemColour::class);
-    }
-
-    public function sizes()
-    {
-        return $this->belongsToMany(Size::class, 'order_item_sizes', 'order_item_id', 'size_id')
-            ->withPivot(['quantity']);
-    }
-
-    public function colour()
-    {
-        return $this->hasOneThrough(Colour::class, OrderItemColour::class, 'order_item_id', 'id', 'id', 'colour_id');
+        return $this->belongsTo(ProductVariant::class, 'variant_id');
     }
 
     public function hiringDetail()

@@ -6,49 +6,62 @@ use App\Repositories\HiringDetailRepository;
 use App\Repositories\UnavailabilityDurationRepository;
 use App\Repositories\ProductFulfillmentOptionRepository;
 use App\Repositories\ProductRepository;
-use App\Repositories\ProductSizeRepository;
+use App\Repositories\ProductVariantRepository;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Repositories\BrandRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\ConditionRepository;
-use App\Repositories\SizeRepository;
+use App\Repositories\ProductSizeRepository;
 use App\Repositories\FulfillmentOptionRepository;
 use App\Repositories\ServiceProviderRepository;
-use App\Repositories\ColourRepository;
+use App\Repositories\ProductColourRepository;
 use App\Services\PaymentService;
 
 class ProductService
 {
     protected ProductRepository $productRepository;
     protected ProductFulfillmentOptionRepository $productFulfillmentOptionRepository;
-    protected ProductSizeRepository $productSizeRepository;
+    protected ProductVariantRepository $productVariantRepository;
     protected HiringDetailRepository $hiringDetailRepository;
     protected UnavailabilityDurationRepository $unavailabilityDurationRepository;
     protected BrandRepository $brandRepository;
     protected CategoryRepository $categoryRepository;
     protected ConditionRepository $conditionRepository;
-    protected SizeRepository $sizeRepository;
+    protected ProductSizeRepository $productSizeRepository;
     protected FulfillmentOptionRepository $fulfillmentOptionRepository;
     protected ServiceProviderRepository $serviceProviderRepository;
-    protected ColourRepository $colourRepository;
+    protected ProductColourRepository $productColourRepository;
     protected PaymentService $paymentService;
 
-    public function __construct(ProductRepository $productRepository, ProductFulfillmentOptionRepository $productFulfillmentOptionRepository, ProductSizeRepository $productSizeRepository, HiringDetailRepository $hiringDetailRepository, UnavailabilityDurationRepository $unavailabilityDurationRepository, BrandRepository $brandRepository, CategoryRepository $categoryRepository, ConditionRepository $conditionRepository, SizeRepository $sizeRepository, FulfillmentOptionRepository $fulfillmentOptionRepository, ServiceProviderRepository $serviceProviderRepository, ColourRepository $colourRepository, PaymentService $paymentService)
-    {
+    public function __construct(
+        ProductRepository $productRepository,
+        ProductFulfillmentOptionRepository $productFulfillmentOptionRepository,
+        ProductVariantRepository $productVariantRepository,
+        HiringDetailRepository $hiringDetailRepository,
+        UnavailabilityDurationRepository $unavailabilityDurationRepository,
+        BrandRepository $brandRepository,
+        CategoryRepository $categoryRepository,
+        ConditionRepository $conditionRepository,
+        ProductSizeRepository $productSizeRepository,
+        FulfillmentOptionRepository $fulfillmentOptionRepository,
+        ServiceProviderRepository $serviceProviderRepository,
+        ProductColourRepository $productColourRepository,
+        PaymentService $paymentService
+    ) {
         $this->productRepository = $productRepository;
         $this->productFulfillmentOptionRepository = $productFulfillmentOptionRepository;
-        $this->productSizeRepository = $productSizeRepository;
+        $this->productVariantRepository = $productVariantRepository;
         $this->hiringDetailRepository = $hiringDetailRepository;
         $this->unavailabilityDurationRepository = $unavailabilityDurationRepository;
         $this->brandRepository = $brandRepository;
         $this->categoryRepository = $categoryRepository;
         $this->conditionRepository = $conditionRepository;
-        $this->sizeRepository = $sizeRepository;
+        $this->productSizeRepository = $productSizeRepository;
         $this->fulfillmentOptionRepository = $fulfillmentOptionRepository;
         $this->serviceProviderRepository = $serviceProviderRepository;
-        $this->colourRepository = $colourRepository;
+        $this->productColourRepository = $productColourRepository;
         $this->paymentService = $paymentService;
     }
 
@@ -69,7 +82,7 @@ class ProductService
 
     public function getAllSizes()
     {
-        return $this->sizeRepository->getAll();
+        return $this->productSizeRepository->getAll();
     }
 
     public function getAllFulfillmentOptions()
@@ -84,7 +97,7 @@ class ProductService
 
     public function getAllColours()
     {
-        return $this->colourRepository->getAll();
+        return $this->productColourRepository->getAll();
     }
 
     public function getAll(array $data)
@@ -112,18 +125,19 @@ class ProductService
 
             $product = $this->productRepository->create($data);
             
-            unset($product->is_favourite);
-
-            if (isset($data['fulfillment_options'])) {
-                $product->fulfillmentOptions()->sync($data['fulfillment_options']);
+            if (isset($data['fulfillment_option_ids'])) {
+                $product->fulfillmentOptions()->sync($data['fulfillment_option_ids']);
             }
 
-            if (isset($data['sizes'])) {
-                $product->sizes()->sync($data['sizes']);
-            }
-
-            if (isset($data['colours'])) {
-                $product->colours()->sync($data['colours']);
+            // Handle variants - array of {colour_id, size_id, quantity}
+            if (isset($data['variants']) && is_array($data['variants'])) {
+                foreach ($data['variants'] as $variant) {
+                    $product->variants()->create([
+                        'colour_id' => $variant['colour_id'],
+                        'size_id' => $variant['size_id'],
+                        'quantity' => $variant['quantity'] ?? 0,
+                    ]);
+                }
             }
 
             if ($data['type'] == 'hire') {
@@ -178,7 +192,6 @@ class ProductService
             DB::beginTransaction();
 
             $product = $this->productRepository->findById($id);
-            unset($product->is_favourite);
 
             if (!$product) {
                 throw new Exception('Product not found.', 404);
@@ -190,12 +203,19 @@ class ProductService
                 $product->fulfillmentOptions()->sync($data['fulfillment_options']);
             }
 
-            if (isset($data['sizes'])) {
-                $product->sizes()->sync($data['sizes']);
-            }
-
-            if (isset($data['colours'])) {
-                $product->colours()->sync($data['colours']);
+            // Handle variants - delete existing and create new ones
+            if (isset($data['variants'])) {
+                $product->variants()->delete();
+                
+                if (is_array($data['variants']) && !empty($data['variants'])) {
+                    foreach ($data['variants'] as $variant) {
+                        $product->variants()->create([
+                            'colour_id' => $variant['colour_id'],
+                            'size_id' => $variant['size_id'],
+                            'quantity' => $variant['quantity'] ?? 0,
+                        ]);
+                    }
+                }
             }
 
             if ($data['type'] == 'hire') {
@@ -276,7 +296,7 @@ class ProductService
         $product = $this->productRepository->findById($id);
 
         $this->productFulfillmentOptionRepository->deleteByProductId($id);
-        $this->productSizeRepository->deleteByProductId($id);
+        $this->productVariantRepository->deleteByProductId($id);
         $this->unavailabilityDurationRepository->deleteByProductId($id);
         
         // Delete hiring detail if exists

@@ -4,10 +4,9 @@ namespace App\Nova;
 
 use Illuminate\Http\Request;
 use Laravel\Nova\Fields\ID;
-use Laravel\Nova\Fields\Select;
+use Laravel\Nova\Fields\Text;
+use Laravel\Nova\Fields\Textarea;
 use Laravel\Nova\Http\Requests\NovaRequest;
-use App\Models\Size;
-use Laravel\Nova\Fields\Number;
 
 class ProductSize extends Resource
 {
@@ -23,7 +22,7 @@ class ProductSize extends Resource
      *
      * @var string
      */
-    public static $title = 'id';
+    public static $title = 'name';
 
     /**
      * The columns that should be searched.
@@ -32,6 +31,7 @@ class ProductSize extends Resource
      */
     public static $search = [
         'id',
+        'name',
     ];
 
     /**
@@ -44,10 +44,11 @@ class ProductSize extends Resource
         return [
             ID::make()->sortable(),
 
-            Select::make('Size Id')->options(Size::pluck('name', 'id'))->rules('required')->sortable()->displayUsingLabels(),
+            Text::make('Name')
+                ->sortable()
+                ->rules('required', 'max:255'),
 
-            Number::make('Quantity')->rules('required')->min(0),
-
+            Textarea::make('Description'),
         ];
     }
 

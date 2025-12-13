@@ -2,10 +2,10 @@
 
 namespace App\Nova;
 
-use App\Models\Colour;
 use Illuminate\Http\Request;
 use Laravel\Nova\Fields\ID;
-use Laravel\Nova\Fields\Select;
+use Laravel\Nova\Fields\Text;
+use Laravel\Nova\Fields\Textarea;
 use Laravel\Nova\Http\Requests\NovaRequest;
 
 class ProductColour extends Resource
@@ -22,7 +22,7 @@ class ProductColour extends Resource
      *
      * @var string
      */
-    public static $title = 'id';
+    public static $title = 'name';
 
     /**
      * The columns that should be searched.
@@ -31,6 +31,7 @@ class ProductColour extends Resource
      */
     public static $search = [
         'id',
+        'name',
     ];
 
     /**
@@ -43,8 +44,15 @@ class ProductColour extends Resource
         return [
             ID::make()->sortable(),
 
-            Select::make('Colour Id')->options(Colour::pluck('name', 'id'))->rules('required')->sortable()->displayUsingLabels(),
+            Text::make('Name')
+                ->sortable()
+                ->rules('required', 'max:255'),
 
+            Text::make('Hexcode')
+                ->sortable()
+                ->rules('required', 'max:255'),
+
+            Textarea::make('Description'),
         ];
     }
 

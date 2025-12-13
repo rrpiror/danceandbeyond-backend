@@ -34,9 +34,9 @@ class Product extends Model implements HasMedia
             ->withTimestamps();
     }
 
-    public function sizes()
+    public function variants()
     {
-        return $this->belongsToMany(Size::class, 'product_sizes', 'product_id', 'size_id')->withPivot(['quantity'])->withTimestamps();
+        return $this->hasMany(ProductVariant::class);
     }
 
     public function user()
@@ -57,21 +57,6 @@ class Product extends Model implements HasMedia
     public function brand()
     {
         return $this->belongsTo(Brand::class);
-    }
-
-    public function productSizes()
-    {
-        return $this->hasMany(ProductSize::class);
-    }
-
-    public function colours()
-    {
-        return $this->belongsToMany(Colour::class, 'product_colours', 'product_id', 'colour_id')->withTimestamps();
-    }
-
-    public function productColours()
-    {
-        return $this->hasMany(ProductColour::class);
     }
 
     public function hiringDetail()

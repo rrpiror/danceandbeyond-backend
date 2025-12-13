@@ -13,13 +13,8 @@ class ProductSizeRepository
         $this->productSize = $productSize;
     }
 
-    public function create(array $data)
+    public function getAll()
     {
-        return $this->productSize->create($data);
-    }
-
-    public function deleteByProductId($id)
-    {
-        return $this->productSize->where('product_id', $id)->delete();
+        return $this->productSize->all();
     }
 }

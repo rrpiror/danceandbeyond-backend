@@ -11,8 +11,9 @@ use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\SellerOrder;
 use App\Models\User;
-use App\Models\Colour;
-use App\Models\Size;
+use App\Models\ProductColour;
+use App\Models\ProductSize;
+use App\Models\ProductVariant;
 use Illuminate\Database\Seeder;
 
 class OrderSeeder extends Seeder
@@ -25,10 +26,10 @@ class OrderSeeder extends Seeder
         $users = User::all();
         $addresses = Address::all();
         $paymentMethods = PaymentMethod::all();
-        $products = Product::with('media')->get();
+        $products = Product::with('media', 'variants.colour', 'variants.size')->get();
         $orderStatuses = OrderStatus::all();
-        $sizes = Size::all();
-        $colours = Colour::all();
+        $sizes = ProductSize::all();
+        $colours = ProductColour::all();
         
         // Create 20 orders
         for ($i = 1; $i <= 20; $i++) {
@@ -169,23 +170,36 @@ class OrderSeeder extends Seeder
                 ];
             }
 
-            $productSnapshot['sizes'] = $sizes->random(3)->map(function ($size) {
+            // Include variants in the snapshot
+            $productSnapshot['variants'] = $product->variants->take(3)->map(function ($variant) {
                 return [
-                    'id' => $size->id,
-                    'name' => $size->name,
-                    'quantity' => rand(1, 3),
+                    'id' => $variant->id,
+                    'colour_id' => $variant->colour_id,
+                    'size_id' => $variant->size_id,
+                    'quantity' => $variant->quantity,
+                    'colour' => $variant->colour ? [
+                        'id' => $variant->colour->id,
+                        'name' => $variant->colour->name,
+                        'hexcode' => $variant->colour->hexcode,
+                    ] : null,
+                    'size' => $variant->size ? [
+                        'id' => $variant->size->id,
+                        'name' => $variant->size->name,
+                    ] : null,
                 ];
-            });
-
-            $productSnapshot['colour'] = $colours->random();
+            })->toArray();
             
             $price = $product->price;
             $totalItemPrice = $price * $quantity;
+
+            // Get a random variant for this order item
+            $randomVariant = $product->variants->isNotEmpty() ? $product->variants->random() : null;
 
             // Create Order Item
             $orderItem = OrderItem::create([
                 'seller_order_id' => $sellerOrder->id,
                 'product_id' => $product->id,
+                'variant_id' => $randomVariant?->id,
                 'quantity' => $quantity,
                 'price' => $price,
                 'product_snapshot' => json_encode($productSnapshot),

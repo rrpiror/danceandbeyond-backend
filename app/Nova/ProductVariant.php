@@ -2,20 +2,23 @@
 
 namespace App\Nova;
 
-use App\Models\Size;
+use App\Models\ProductColour;
+use App\Models\ProductSize;
 use Illuminate\Http\Request;
+use Laravel\Nova\Fields\BelongsTo;
 use Laravel\Nova\Fields\ID;
+use Laravel\Nova\Fields\Number;
 use Laravel\Nova\Fields\Select;
 use Laravel\Nova\Http\Requests\NovaRequest;
 
-class OrderItemSize extends Resource
+class ProductVariant extends Resource
 {
     /**
      * The model the resource corresponds to.
      *
-     * @var class-string<\App\Models\OrderItemSize>
+     * @var class-string<\App\Models\ProductVariant>
      */
-    public static $model = \App\Models\OrderItemSize::class;
+    public static $model = \App\Models\ProductVariant::class;
 
     /**
      * The single value that should be used to represent the resource when being displayed.
@@ -43,8 +46,21 @@ class OrderItemSize extends Resource
         return [
             ID::make()->sortable(),
 
-            Select::make('Size Id')->options(Size::pluck('name', 'id'))->rules('required')->sortable()->displayUsingLabels(),
+            Select::make('Colour', 'colour_id')
+                ->options(ProductColour::pluck('name', 'id'))
+                ->rules('required')
+                ->sortable()
+                ->displayUsingLabels(),
 
+            Select::make('Size', 'size_id')
+                ->options(ProductSize::pluck('name', 'id'))
+                ->rules('required')
+                ->sortable()
+                ->displayUsingLabels(),
+
+            Number::make('Quantity')
+                ->rules('required')
+                ->min(0),
         ];
     }
 

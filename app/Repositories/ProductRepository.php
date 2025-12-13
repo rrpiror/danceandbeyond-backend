@@ -9,7 +9,7 @@ use Illuminate\Support\Collection;
 class ProductRepository
 {
     protected Product $product;
-    public array $productRelationAttributes = ['brand', 'category', 'condition', 'productSizes.size', 'colours', 'fulfillmentOptions', 'hiringDetail', 'unavailabilityDurations', 'user:id,name', 'reviews.user:id,name', 'media'];
+    public array $productRelationAttributes = ['brand', 'category', 'condition', 'variants.colour', 'variants.size', 'fulfillmentOptions', 'hiringDetail', 'unavailabilityDurations', 'user:id,name', 'reviews.user:id,name', 'media'];
 
     public function __construct(Product $product)
     {
@@ -50,7 +50,7 @@ class ProductRepository
             // Filter products that have ALL specified sizes with the required quantities
             $query = $query->where(function ($q) use ($sizeQuantities) {
                 foreach ($sizeQuantities as $sizeId => $minQuantity) {
-                    $q->whereHas('productSizes', function ($query) use ($sizeId, $minQuantity) {
+                    $q->whereHas('variants', function ($query) use ($sizeId, $minQuantity) {
                         $query->where('size_id', $sizeId)
                               ->where('quantity', '>=', $minQuantity);
                     });
@@ -61,11 +61,11 @@ class ProductRepository
         // Legacy support: Keep old size_id filtering for backward compatibility
         if (isset($data['size_id']) && !isset($data['size_quantities'])) {
             if (is_array($data['size_id'])) {
-                $query = $query->whereHas('productSizes', function ($query) use ($data) {
+                $query = $query->whereHas('variants', function ($query) use ($data) {
                     $query->whereIn('size_id', $data['size_id']);
                 });
             } else {
-                $query = $query->whereHas('productSizes', function ($query) use ($data) {
+                $query = $query->whereHas('variants', function ($query) use ($data) {
                     $query->where('size_id', $data['size_id']);
                 });
             }
@@ -73,7 +73,7 @@ class ProductRepository
 
         // Legacy support: Keep old quantity filtering for backward compatibility
         if (isset($data['quantity']) && !isset($data['size_quantities'])) {
-            $query = $query->whereHas('productSizes', function ($query) use ($data) {
+            $query = $query->whereHas('variants', function ($query) use ($data) {
                 $query->where('quantity', '>=', $data['quantity']);
             });
         }
@@ -96,11 +96,11 @@ class ProductRepository
 
         if (isset($data['colour_id'])) {
             if (is_array($data['colour_id'])) {
-                $query = $query->whereHas('colours', function ($query) use ($data) {
+                $query = $query->whereHas('variants', function ($query) use ($data) {
                     $query->whereIn('colour_id', $data['colour_id']);
                 });
             } else {
-                $query = $query->whereHas('colours', function ($query) use ($data) {
+                $query = $query->whereHas('variants', function ($query) use ($data) {
                     $query->where('colour_id', $data['colour_id']);
                 });
             }
@@ -118,36 +118,13 @@ class ProductRepository
         // Get paginated results
         $paginatedProducts = $query->paginate($perPage, ['*'], 'page', $page);
 
-        // Process the products to add favourite attribute
-        $products = $this->addFavouriteAttributeIfAuthenticated($paginatedProducts->getCollection());
-        
-        // Replace the collection in the paginated result
-        $paginatedProducts->setCollection($products);
-
         return $paginatedProducts;
     }
 
     public function findById($id)
     {
         $product = $this->product->with($this->productRelationAttributes)->find($id);
-        $product = $this->addFavouriteAttributeIfAuthenticated($product);
         return $product;
-    }
-
-    private function addFavouriteAttributeIfAuthenticated(Collection|Product $data): Collection|Product
-    {
-        if (Auth::check()) {
-            $user = Auth::user();
-            $favouriteProductIds = $user ? $user->favouriteProducts()->pluck('product_id')->toArray() : [];
-            if ($data instanceof Collection) {
-                $data->each(function ($product) use ($favouriteProductIds) {
-                    $product->is_favourite = in_array($product->id, $favouriteProductIds);
-                });
-            } else {
-                $data->is_favourite = in_array($data->id, $favouriteProductIds);
-            }
-        }
-        return $data;
     }
 
     public function create(array $data)

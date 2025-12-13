@@ -6,6 +6,7 @@ use App\Services\OrderService;
 use App\Services\ValidationService;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
 {
@@ -16,7 +17,7 @@ class OrderController extends Controller
         'items' => 'required|array|min:1',
         'items.*.product_id' => 'required|integer|exists:products,id',
         'items.*.quantity' => 'required|integer|min:1',
-        'items.*.size_id' => 'required|integer|exists:sizes,id',
+        'items.*.variant_id' => 'required|integer|exists:product_variants,id',
         'billing_address_id' => 'required|integer|exists:addresses,id',
         'shipping_address_id' => 'required|integer|exists:addresses,id',
     ];
@@ -34,16 +35,16 @@ class OrderController extends Controller
             $perPage = $request->get('per_page', 15);
             $sortBy = $request->get('sort_by', 'newest'); // 'newest' or 'oldest'
             $type = $request->get('type', null); // 'hire', 'purchase', or 'hire,purchase'
-            
+
             $filters = [
                 'sort_by' => $sortBy,
                 'type' => $type,
             ];
-            
+
             $orders = $this->orderService->getAll($page, $perPage, $filters);
             return apiResponse(true, $orders, "Orders retrieved successfully");
         } catch (Exception $ex) {
-            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, $ex->getCode() ?? 500);
+            return apiResponse(false, $ex->getMessage(), $ex->getMessage() ?? 'Something went wrong', $ex->getCode() ?? 1, $ex->getCode() ?? 500);
         }
     }
 
@@ -53,7 +54,7 @@ class OrderController extends Controller
             $order = $this->orderService->findById($id);
             return apiResponse(true, $order, "Order retrieved successfully");
         } catch (Exception $ex) {
-            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, $ex->getCode() ?? 500);
+            return apiResponse(false, $ex->getMessage(), $ex->getMessage() ?? 'Something went wrong', $ex->getCode() ?? 1, $ex->getCode() ?? 500);
         }
     }
 
@@ -68,9 +69,13 @@ class OrderController extends Controller
 
             $order = $this->orderService->create($request->all());
 
-            return apiResponse(true, $order, "Order placed");
+            return successResponse($order, "Order placed");
         } catch (Exception $ex) {
-            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, $ex->getCode() ?? 500);
+            $errors = null;
+            if ($ex instanceof ValidationException) {
+                $errors = $ex->validator->errors();
+            }
+            return errorResponse($ex->getMessage(), $errors, $ex->getCode() ?? 1, $ex->getCode() ?? 400);
         }
     }
 
@@ -80,7 +85,7 @@ class OrderController extends Controller
             $sellerInfo = $this->orderService->getSellerInfo();
             return apiResponse(true, $sellerInfo, "Seller info retrieved successfully");
         } catch (Exception $ex) {
-            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+            return apiResponse(false, $ex->getMessage(), $ex->getMessage() ?? 'Something went wrong', $ex->getCode() ?? 1, $ex->getCode() ?? 500);
         }
     }
 
@@ -90,7 +95,7 @@ class OrderController extends Controller
             $sellerOrders = $this->orderService->getSellerOrders();
             return apiResponse(true, $sellerOrders, "Seller orders retrieved successfully");
         } catch (Exception $ex) {
-            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+            return apiResponse(false, $ex->getMessage(), $ex->getMessage() ?? 'Something went wrong', $ex->getCode() ?? 1, $ex->getCode() ?? 500);
         }
     }
 
@@ -100,7 +105,7 @@ class OrderController extends Controller
             $sellerOrder = $this->orderService->getSellerOrderById($id);
             return apiResponse(true, $sellerOrder, "Seller order retrieved successfully");
         } catch (Exception $ex) {
-            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+            return apiResponse(false, $ex->getMessage(), $ex->getMessage() ?? 'Something went wrong', $ex->getCode() ?? 1, 500);
         }
     }
 
@@ -110,7 +115,7 @@ class OrderController extends Controller
             $statuses = $this->orderService->getAllOrderStatuses();
             return apiResponse(true, $statuses, "Order statuses retrieved successfully");
         } catch (Exception $ex) {
-            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
+            return apiResponse(false, $ex->getMessage(), $ex->getMessage() ?? 'Something went wrong', $ex->getCode() ?? 1, $ex->getCode() ?? 500);
         }
     }
 
@@ -129,7 +134,7 @@ class OrderController extends Controller
 
             return apiResponse(true, $sellerOrder, "Status added to seller order successfully");
         } catch (Exception $ex) {
-            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, $ex->getCode() ?? 500);
+            return apiResponse(false, $ex->getMessage(), $ex->getMessage() ?? 'Something went wrong', $ex->getCode() ?? 1, $ex->getCode() ?? 500);
         }
     }
 }

@@ -17,32 +17,29 @@ class DatabaseSeeder extends Seeder
             BrandSeeder::class,
             CategorySeeder::class,
             ConditionSeeder::class,
-            SizeSeeder::class,
-            ColourSeeder::class,
+            ProductSizeSeeder::class,
+            ProductColourSeeder::class,
             FulfillmentOptionSeeder::class,
-            
+
             // Users and related
             UserSeeder::class,
             OrganisationSeeder::class,
             AddressSeeder::class,
             UserAddressSeeder::class,
-            
+
             // Products and related
             ProductSeeder::class,
-            ProductSizeSeeder::class,
-            ProductColourSeeder::class,
+            ProductVariantSeeder::class,
             ProductFulfillmentOptionSeeder::class,
             HiringDetailSeeder::class,
             FavouriteProductSeeder::class,
-            
+
             // Orders and related
             PaymentMethodSeeder::class,
             OrderStatusSeeder::class,
-            OrderItemColourSeeder::class,
-            OrderItemSizeSeeder::class,
             OrderSeeder::class,
             ShippingServiceProviderSeeder::class,
-            
+
             // Communication
             ChatSeeder::class,
             ChatMessageSeeder::class,

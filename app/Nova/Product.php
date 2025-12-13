@@ -82,9 +82,7 @@ class Product extends Resource
 
             BelongsToMany::make('Fulfillment Options', 'fulfillmentOptions', FulfillmentOption::class),
 
-            HasMany::make('Sizes', 'productSizes', ProductSize::class),
-
-            BelongsToMany::make('Colours'),
+            HasMany::make('Variants', 'variants', ProductVariant::class),
 
             BelongsToMany::make('Shipping Service Providers', 'shippingServiceProviders', ShippingServiceProvider::class),
         ];

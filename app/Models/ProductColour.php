@@ -10,8 +10,16 @@ class ProductColour extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $table = 'product_colours';
+
     protected $fillable = [
-        'product_id',
-        'colour_id'
+        'name',
+        'hexcode',
+        'description'
     ];
+
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class, 'colour_id');
+    }
 }

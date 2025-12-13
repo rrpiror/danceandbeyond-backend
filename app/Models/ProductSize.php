@@ -10,14 +10,15 @@ class ProductSize extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $table = 'product_sizes';
+
     protected $fillable = [
-        'product_id',
-        'size_id',
-        'quantity'
+        'name',
+        'description'
     ];
 
-    public function size()
+    public function variants()
     {
-        return $this->belongsTo(Size::class);
+        return $this->hasMany(ProductVariant::class, 'size_id');
     }
 }

@@ -47,6 +47,7 @@ class SellerOrderResource extends JsonResource
             'order_items' => $this->orderItems->map(function ($orderItem) {
                 return [
                     'id' => $orderItem->id,
+                    'variant' => $orderItem->variant,
                     'seller_order_id' => $orderItem->seller_order_id,
                     'product_id' => $orderItem->product_id,
                     'quantity' => $orderItem->quantity,
@@ -55,6 +56,7 @@ class SellerOrderResource extends JsonResource
                     'deleted_at' => $orderItem->deleted_at,
                     'created_at' => $orderItem->created_at,
                     'updated_at' => $orderItem->updated_at,
+                    'hiring_detail' => $orderItem->hiringDetail,
                 ];
             }),
         ];

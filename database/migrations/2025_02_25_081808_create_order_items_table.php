@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('seller_order_id');
             $table->unsignedBigInteger('product_id');
+            $table->unsignedBigInteger('variant_id')->nullable();
             $table->integer('quantity');
             $table->float('price');
             $table->json('product_snapshot');
@@ -22,6 +23,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('product_id')->references('id')->on('products')->onDelete('CASCADE')->onUpdate('CASCADE');
+            $table->foreign('variant_id')->references('id')->on('product_variants')->onDelete('SET NULL')->onUpdate('CASCADE');
         });
     }
 
