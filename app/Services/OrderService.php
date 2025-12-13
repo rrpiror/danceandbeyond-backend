@@ -263,7 +263,7 @@ class OrderService
         foreach ($items as $item) {
             $product = $products[$item['product_id']];
 
-            $product_snapshot = $this->createProductSnapshot($item, $product);
+            $product_snapshot = $this->createProductSnapshot($product);
 
             // Create order item with product details
             $orderItem = $this->orderItemRepository->create([
@@ -290,11 +290,8 @@ class OrderService
         }
     }
 
-    private function createProductSnapshot($item, $product)
+    function createProductSnapshot($product)
     {
-        $isHire = $product->type === 'hire';
-        $sizes = $item['sizes'] ?? [];
-        $colour = $item['colour'] ?? null;
         $variants = $product->variants->load(['colour', 'size']);
 
         $product_snapshot = [
@@ -304,6 +301,7 @@ class OrderService
             'price' => $product->price,
             'type' => $product->type,
             'variants' => $variants,
+            'hiring_details'=> $product->hiringDetail ? $product->hiringDetail->toArray() : null,
             'media' => $product->media->map(function ($media) {
                 return [
                     'id' => $media->id,
@@ -345,16 +343,6 @@ class OrderService
                 'name' => $product->user ? $product->user->name : null,
             ],
         ];
-
-        if ($isHire && $product->hiringDetail) {
-            // Get hiring days from request
-            $days = $item['hiring_days'] ?? $product->hiringDetail->min_hire_days;
-
-            $product_snapshot['hiring_details'] = [
-                'days' => $days,
-                ...$product->hiringDetail->toArray(),
-            ];
-        }
 
         return $product_snapshot;
     }

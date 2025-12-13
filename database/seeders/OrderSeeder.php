@@ -14,10 +14,20 @@ use App\Models\User;
 use App\Models\ProductColour;
 use App\Models\ProductSize;
 use App\Models\ProductVariant;
+use App\Services\OrderService;
 use Illuminate\Database\Seeder;
+use App\Models\StripeIntent;
 
 class OrderSeeder extends Seeder
 {
+
+    protected $orderService;
+
+    public function __construct(OrderService $orderService)
+    {
+        $this->orderService = $orderService;
+    }
+
     /**
      * Run the database seeds.
      */
@@ -28,8 +38,6 @@ class OrderSeeder extends Seeder
         $paymentMethods = PaymentMethod::all();
         $products = Product::with('media', 'variants.colour', 'variants.size')->get();
         $orderStatuses = OrderStatus::all();
-        $sizes = ProductSize::all();
-        $colours = ProductColour::all();
         
         // Create 20 orders
         for ($i = 1; $i <= 20; $i++) {
@@ -71,13 +79,25 @@ class OrderSeeder extends Seeder
                 'created_at' => $date,
                 'updated_at' => $date,
             ]);
-
             // Create order items and seller orders
-            $this->createOrderItems($order, $products, $orderStatuses, $sizes, $colours);
+            $this->createOrderItems($order, $products, $orderStatuses);
+
+            $stripeIntent = StripeIntent::create([
+                'order_id' => $order->id,
+                'payment_intent_id' => 'pi_1M0M0M' . $i,
+                'client_secret' => 'cs_1M0M0M' . $i,
+                'amount' => $order->amount * 100,
+                'currency' => 'gbp',
+                'status' => 'requires_payment_method',
+                'metadata' => [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                ],
+            ]);
         }
     }
 
-    private function createOrderItems($order, $products, $orderStatuses, $sizes, $colours)
+    private function createOrderItems($order, $products, $orderStatuses)
     {
         // Each order gets 1-3 items
         $numItems = rand(1, 3);
@@ -116,78 +136,17 @@ class OrderSeeder extends Seeder
             $quantity = rand(1, 6); // Quantity for both hire and sale products
             $hiringDays = null;
 
-            // Create product snapshot
-            $productSnapshot = [
+            $item = [
                 'id' => $product->id,
                 'name' => $product->name,
-                'description' => $product->description,
-                'price' => $product->price,
                 'type' => $product->type,
-                'media' => $product->media->map(function ($media) {
-                    return [
-                        'id' => $media->id,
-                        'model_type' => $media->model_type,
-                        'model_id' => $media->model_id,
-                        'uuid' => $media->uuid,
-                        'collection_name' => $media->collection_name,
-                        'name' => $media->name,
-                        'file_name' => $media->file_name,
-                        'mime_type' => $media->mime_type,
-                        'disk' => $media->disk,
-                        'conversions_disk' => $media->conversions_disk,
-                        'size' => $media->size,
-                        'manipulations' => $media->manipulations,
-                        'custom_properties' => $media->custom_properties,
-                        'generated_conversions' => $media->generated_conversions,
-                        'responsive_images' => $media->responsive_images,
-                        'order_column' => $media->order_column,
-                        'created_at' => $media->created_at,
-                        'updated_at' => $media->updated_at,
-                        'original_url' => $media->getUrl(),
-                        'preview_url' => $media->getUrl(),
-                    ];
-                })->toArray(),
-                'brand' => [
-                    'id' => $product->brand_id,
-                    'name' => $product->brand ? $product->brand->name : null,
-                ],
-                'category' => [
-                    'id' => $product->category_id,
-                    'name' => $product->category ? $product->category->name : null,
-                ],
-                'condition' => [
-                    'id' => $product->condition_id,
-                    'name' => $product->condition ? $product->condition->name : null,
-                ],
+                'price' => $product->price,
+                'quantity' => $quantity,
+                'hiring_days' => $hiringDays,
             ];
 
-            if ($isHire && $product->hiringDetail) {
-                $hiringDays = rand($product->hiringDetail->min_hire_days, 10);
-
-                $productSnapshot['hiring_details'] = [
-                    'days' => $hiringDays,
-                    ...$product->hiringDetail->toArray(),
-                ];
-            }
-
-            // Include variants in the snapshot
-            $productSnapshot['variants'] = $product->variants->take(3)->map(function ($variant) {
-                return [
-                    'id' => $variant->id,
-                    'colour_id' => $variant->colour_id,
-                    'size_id' => $variant->size_id,
-                    'quantity' => $variant->quantity,
-                    'colour' => $variant->colour ? [
-                        'id' => $variant->colour->id,
-                        'name' => $variant->colour->name,
-                        'hexcode' => $variant->colour->hexcode,
-                    ] : null,
-                    'size' => $variant->size ? [
-                        'id' => $variant->size->id,
-                        'name' => $variant->size->name,
-                    ] : null,
-                ];
-            })->toArray();
+            // Create product snapshot
+            $productSnapshot = $this->orderService->createProductSnapshot($product);
             
             $price = $product->price;
             $totalItemPrice = $price * $quantity;

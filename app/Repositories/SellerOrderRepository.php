@@ -10,6 +10,16 @@ class SellerOrderRepository
 {
     protected SellerOrder $sellerOrder;
 
+    public $detailedRelations = [
+        'orderItems',
+        'orderItems.variant.size',
+        'orderItems.variant.colour',
+        'order',
+        'order.user:id,name,email,phone_number',
+        'seller:id,name,email,phone_number',
+        'statuses',
+    ];
+
     public function __construct(SellerOrder $sellerOrder)
     {
         $this->sellerOrder = $sellerOrder;
@@ -53,29 +63,14 @@ class SellerOrderRepository
 
     public function findAllSellerOrders($sellerId)
     {
-        $sellerOrders = $this->sellerOrder->where('seller_id', $sellerId)->latest()->get()->load([
-            'orderItems',
-            'orderItems.sizes',
-            'order',
-            'order.user:id,name,email,phone_number',
-            'seller:id,name,email,phone_number',
-            'statuses',
-        ]);
+        $sellerOrders = $this->sellerOrder->where('seller_id', $sellerId)->latest()->get()->load($this->detailedRelations);
         
         return new SellerOrderCollectionResource($sellerOrders);
     }
 
     public function findById($id)
     {
-        $sellerOrder = $this->sellerOrder->find($id)->load([
-            'orderItems',
-            'orderItems.variant.size',
-            'orderItems.variant.colour',
-            'order',
-            'order.user:id,name,email,phone_number',
-            'seller:id,name,email,phone_number',
-            'statuses',
-        ]);
+        $sellerOrder = $this->sellerOrder->find($id)->load($this->detailedRelations);
         
         return new SellerOrderResource($sellerOrder);
     }
