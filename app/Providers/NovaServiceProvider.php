@@ -11,8 +11,8 @@ use App\Nova\Dashboards\Main;
 use App\Nova\FulfillmentOption;
 use App\Nova\Order;
 use App\Nova\OrderItem;
-use App\Nova\OrderItemSize;
 use App\Nova\Product;
+use App\Nova\SellerOrder;
 use App\Nova\ProductColour;
 use App\Nova\ProductFulfillmentOption;
 use App\Nova\ProductSize;
@@ -40,10 +40,10 @@ class NovaServiceProvider extends NovaApplicationServiceProvider
 
 		Nova::mainMenu(function (Request $request) {
 
-		$usersResources = [
-			MenuItem::resource(\App\Nova\User::class),
-			MenuItem::resource(Organisation::class),
-		];
+			$usersResources = [
+				MenuItem::resource(\App\Nova\User::class),
+				MenuItem::resource(Organisation::class),
+			];
 
 			$productsResources = [
 				MenuItem::resource(Product::class),
@@ -69,7 +69,7 @@ class NovaServiceProvider extends NovaApplicationServiceProvider
 			$ordersResources = [
 				MenuItem::resource(Order::class),
 				MenuItem::resource(OrderItem::class),
-				MenuItem::resource(OrderItemSize::class),
+				MenuItem::resource(SellerOrder::class),
 			];
 
 			return [

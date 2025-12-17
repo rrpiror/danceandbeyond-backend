@@ -4,22 +4,20 @@ namespace App\Nova;
 
 use Illuminate\Http\Request;
 use Laravel\Nova\Fields\BelongsTo;
+use Laravel\Nova\Fields\DateTime;
+use Laravel\Nova\Fields\HasMany;
 use Laravel\Nova\Fields\ID;
-use Laravel\Nova\Fields\Select;
-use Laravel\Nova\Http\Requests\NovaRequest;
-use App\Models\Product;
-use Laravel\Nova\Fields\HasOne;
 use Laravel\Nova\Fields\Number;
-use Laravel\Nova\Fields\Textarea;
+use Laravel\Nova\Http\Requests\NovaRequest;
 
-class OrderItem extends Resource
+class SellerOrder extends Resource
 {
     /**
      * The model the resource corresponds to.
      *
-     * @var class-string<\App\Models\OrderItem>
+     * @var class-string<\App\Models\SellerOrder>
      */
-    public static $model = \App\Models\OrderItem::class;
+    public static $model = \App\Models\SellerOrder::class;
 
     /**
      * The single value that should be used to represent the resource when being displayed.
@@ -47,20 +45,23 @@ class OrderItem extends Resource
         return [
             ID::make()->sortable(),
 
-            Select::make('Product Id')->options(Product::pluck('name', 'id'))->rules('required')->sortable()->displayUsingLabels(),
+            BelongsTo::make('Order', 'order', Order::class)
+                ->sortable()
+                ->rules('required'),
 
-            BelongsTo::make('Variant', 'variant', ProductVariant::class)
-                ->nullable()
-                ->sortable(),
+            BelongsTo::make('Seller', 'seller', User::class)
+                ->sortable()
+                ->rules('required'),
 
-            Number::make('Quantity')->rules('required')->min(1)->rules('required'),
+            Number::make('Amount')
+                ->sortable()
+                ->rules('required', 'min:0'),
 
-            Number::make('Price')->rules('required')->min(1)->rules('required'),
+            DateTime::make('Transferred At')
+                ->sortable()
+                ->nullable(),
 
-            Textarea::make('Product Snapshot')->rules('required'),
-
-            HasOne::make('Hiring Detail', 'hiringDetail', OrderItemHiringDetail::class),
-
+            HasMany::make('Order Items', 'orderItems', OrderItem::class),
         ];
     }
 

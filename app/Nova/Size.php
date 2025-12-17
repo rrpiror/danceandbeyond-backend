@@ -3,30 +3,26 @@
 namespace App\Nova;
 
 use Illuminate\Http\Request;
-use Laravel\Nova\Fields\BelongsTo;
 use Laravel\Nova\Fields\ID;
-use Laravel\Nova\Fields\Select;
-use Laravel\Nova\Http\Requests\NovaRequest;
-use App\Models\Product;
-use Laravel\Nova\Fields\HasOne;
-use Laravel\Nova\Fields\Number;
+use Laravel\Nova\Fields\Text;
 use Laravel\Nova\Fields\Textarea;
+use Laravel\Nova\Http\Requests\NovaRequest;
 
-class OrderItem extends Resource
+class Size extends Resource
 {
     /**
      * The model the resource corresponds to.
      *
-     * @var class-string<\App\Models\OrderItem>
+     * @var class-string<\App\Models\ProductSize>
      */
-    public static $model = \App\Models\OrderItem::class;
+    public static $model = \App\Models\ProductSize::class;
 
     /**
      * The single value that should be used to represent the resource when being displayed.
      *
      * @var string
      */
-    public static $title = 'id';
+    public static $title = 'name';
 
     /**
      * The columns that should be searched.
@@ -35,7 +31,18 @@ class OrderItem extends Resource
      */
     public static $search = [
         'id',
+        'name',
     ];
+
+    /**
+     * Get the URI key for the resource.
+     *
+     * @return string
+     */
+    public static function uriKey(): string
+    {
+        return 'sizes';
+    }
 
     /**
      * Get the fields displayed by the resource.
@@ -47,20 +54,11 @@ class OrderItem extends Resource
         return [
             ID::make()->sortable(),
 
-            Select::make('Product Id')->options(Product::pluck('name', 'id'))->rules('required')->sortable()->displayUsingLabels(),
+            Text::make('Name')
+                ->sortable()
+                ->rules('required', 'max:255'),
 
-            BelongsTo::make('Variant', 'variant', ProductVariant::class)
-                ->nullable()
-                ->sortable(),
-
-            Number::make('Quantity')->rules('required')->min(1)->rules('required'),
-
-            Number::make('Price')->rules('required')->min(1)->rules('required'),
-
-            Textarea::make('Product Snapshot')->rules('required'),
-
-            HasOne::make('Hiring Detail', 'hiringDetail', OrderItemHiringDetail::class),
-
+            Textarea::make('Description'),
         ];
     }
 

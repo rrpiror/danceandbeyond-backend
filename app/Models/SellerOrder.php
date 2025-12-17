@@ -18,6 +18,10 @@ class SellerOrder extends Model
         'transferred_at'
     ];
 
+    protected $casts = [
+        'transferred_at' => 'datetime',
+    ];
+
     public function orderItems()
     {
         return $this->hasMany(OrderItem::class);

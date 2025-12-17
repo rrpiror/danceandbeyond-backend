@@ -56,9 +56,11 @@ class Order extends Resource
 
             Select::make('Payment Method Id')->options(PaymentMethod::pluck('name', 'id'))->rules('required')->sortable()->displayUsingLabels(),
 
-            HasMany::make('Order Items', 'orderItems', OrderItem::class),
-
             Number::make('Amount')->rules('required')->min(0),
+
+            HasMany::make('Seller Orders', 'sellerOrders', SellerOrder::class),
+
+            HasMany::make('Order Items', 'orderItems', OrderItem::class),
 
 					Select::make('Shipping Address')
 						->options(function () use ($request) {
