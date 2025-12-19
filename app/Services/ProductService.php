@@ -248,6 +248,9 @@ class ProductService
             }
 
             if (isset($data['images']) && is_array($data['images'])) {
+                // Clear existing images before adding new ones
+                $product->clearMediaCollection('images');
+                
                 foreach ($data['images'] as $base64Image) {
                     $imageType = explode(';', $base64Image)[0];
                     $imageType = explode('/', $imageType)[1];
