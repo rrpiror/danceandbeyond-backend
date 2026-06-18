@@ -2,19 +2,19 @@
 
 namespace App\Repositories;
 
-use App\Models\ProductSize;
+use App\Models\Size;
 
 class ProductSizeRepository
 {
-    protected ProductSize $productSize;
+    protected Size $size;
 
-    public function __construct(ProductSize $productSize)
+    public function __construct(Size $size)
     {
-        $this->productSize = $productSize;
+        $this->size = $size;
     }
 
     public function getAll()
     {
-        return $this->productSize->all();
+        return $this->size->latest()->get();
     }
 }

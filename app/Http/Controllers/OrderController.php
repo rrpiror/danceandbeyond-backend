@@ -17,7 +17,7 @@ class OrderController extends Controller
         'items' => 'required|array|min:1',
         'items.*.product_id' => 'required|integer|exists:products,id',
         'items.*.quantity' => 'required|integer|min:1',
-        'items.*.variant_id' => 'required|integer|exists:product_variants,id',
+        'items.*.variant_id' => 'nullable|integer|exists:product_variants,id',
         'billing_address_id' => 'required|integer|exists:addresses,id',
         'shipping_address_id' => 'required|integer|exists:addresses,id',
     ];
@@ -133,6 +133,17 @@ class OrderController extends Controller
             $sellerOrder = $this->orderService->addStatusToSellerOrder($sellerOrderId, $request->status_id);
 
             return apiResponse(true, $sellerOrder, "Status added to seller order successfully");
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), $ex->getMessage() ?? 'Something went wrong', $ex->getCode() ?? 1, $ex->getCode() || 500);
+        }
+    }
+
+    public function releaseSellerOrderFunds($sellerOrderId)
+    {
+        try {
+            $sellerOrder = $this->orderService->releaseSellerOrderFunds($sellerOrderId);
+
+            return apiResponse(true, $sellerOrder, "Funds released successfully");
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), $ex->getMessage() ?? 'Something went wrong', $ex->getCode() ?? 1, $ex->getCode() || 500);
         }

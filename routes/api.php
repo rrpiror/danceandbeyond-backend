@@ -45,6 +45,9 @@ Route::get('/brands', [BrandController::class, 'index']);
 Route::get('/conditions', [ConditionController::class, 'index']);
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/sizes', [SizeController::class, 'index']);
+Route::get('/fulfillment-options', [FulfillmentOptionController::class, 'index']);
+Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
+Route::get('/shipping-service-providers', [ShippingServiceProviderController::class, 'index']);
 Route::get('/order-statuses', [OrderController::class, 'getAllOrderStatuses']);
 
 
@@ -58,17 +61,14 @@ Route::middleware(['auth:api'])->group(function () {
     
     // Stripe connection
     Route::get('/stripe/connect', [UserController::class, 'stripeConnect']);
+    Route::get('/stripe/connect/status', [UserController::class, 'stripeConnectStatus']);
     
     // Seller endpoints
     Route::get('/seller/info', [OrderController::class, 'getSellerInfo']);
     Route::get('/seller/orders', [OrderController::class, 'getSellerOrders']);
     Route::get('/seller/orders/{id}', [OrderController::class, 'getSellerOrderById']);
     Route::post('/seller/orders/{id}/status', [OrderController::class, 'addStatusToSellerOrder']);
-    
-    // Payment & fulfillment options (authenticated)
-    Route::get('/fulfillment-options', [FulfillmentOptionController::class, 'index']);
-    Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
-    Route::get('/shipping-service-providers', [ShippingServiceProviderController::class, 'index']);
+    Route::post('/seller/orders/{id}/release-funds', [OrderController::class, 'releaseSellerOrderFunds']);
     
     // Order management (authenticated)
     Route::apiResource('/orders', OrderController::class);

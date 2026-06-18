@@ -126,18 +126,30 @@ class UserService
     {
         try {
             $user = Auth::user();
-            $account = Account::create([
-                'type' => 'standard',
-            ]);
-
             $user = $this->userRepository->findById($user->id);
 
             if (!$user) {
                 throw new Exception('User not found', 404);
             }
 
-            $user->stripe_seller_id = $account->id;
-            $user->save();
+            if ($user->stripe_seller_id) {
+                $account = Account::retrieve($user->stripe_seller_id);
+            } else {
+                $account = Account::create([
+                    'type' => 'standard',
+                    'email' => $user->email,
+                    'business_profile' => [
+                        'name' => $user->name,
+                    ],
+                    'capabilities' => [
+                        'card_payments' => ['requested' => true],
+                        'transfers' => ['requested' => true],
+                    ],
+                ]);
+
+                $user->stripe_seller_id = $account->id;
+                $user->save();
+            }
 
             $accountLink = AccountLink::create([
                 'account' => $account->id,
@@ -150,6 +162,38 @@ class UserService
         } catch (Exception $ex) {
             throw new Exception($ex->getMessage(), 422);
         }
+    }
+
+    public function stripeConnectStatus()
+    {
+        $user = Auth::user();
+        $user = $this->userRepository->findById($user->id);
+
+        if (!$user || !$user->stripe_seller_id) {
+            return [
+                'connected' => false,
+                'account_id' => null,
+                'details_submitted' => false,
+                'charges_enabled' => false,
+                'payouts_enabled' => false,
+                'transfers_enabled' => false,
+                'ready_for_payouts' => false,
+            ];
+        }
+
+        $account = Account::retrieve($user->stripe_seller_id);
+        $transfers = $account->capabilities->transfers ?? null;
+        $transfersEnabled = $transfers === 'active';
+
+        return [
+            'connected' => true,
+            'account_id' => $account->id,
+            'details_submitted' => (bool) $account->details_submitted,
+            'charges_enabled' => (bool) $account->charges_enabled,
+            'payouts_enabled' => (bool) $account->payouts_enabled,
+            'transfers_enabled' => $transfersEnabled,
+            'ready_for_payouts' => (bool) $account->payouts_enabled && $transfersEnabled,
+        ];
     }
 
     public function changePassword(array $data)

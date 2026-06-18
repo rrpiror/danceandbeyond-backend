@@ -35,6 +35,14 @@ class ProductRepository
             $query->where('user_id', $data['user_id']);
         }
 
+        if (isset($data['type'])) {
+            $query->where('type', $data['type']);
+        }
+
+        $query->whereHas('variants', function ($variantQuery) {
+            $variantQuery->where('quantity', '>', 0);
+        });
+
         if (isset($data['price_min'])) {
             $query = $query->where('price', '>=', $data['price_min']);
         }
@@ -139,6 +147,13 @@ class ProductRepository
 
     public function findProductsByUserId($userId)
     {
-        return $this->product->where('user_id', $userId)->with('media', 'brand')->latest()->get();
+        return $this->product
+            ->where('user_id', $userId)
+            ->whereHas('variants', function ($variantQuery) {
+                $variantQuery->where('quantity', '>', 0);
+            })
+            ->with('media', 'brand')
+            ->latest()
+            ->get();
     }
 }

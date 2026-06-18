@@ -105,6 +105,17 @@ class UserController extends Controller
         }
     }
 
+    public function stripeConnectStatus()
+    {
+        try {
+            $status = $this->userService->stripeConnectStatus();
+
+            return apiResponse(true, $status);
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, $ex->getCode() ?: 422);
+        }
+    }
+
     public function addReview(Request $request)
     {
         try {

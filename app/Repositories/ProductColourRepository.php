@@ -2,19 +2,19 @@
 
 namespace App\Repositories;
 
-use App\Models\ProductColour;
+use App\Models\Colour;
 
 class ProductColourRepository
 {
-    protected ProductColour $productColour;
+    protected Colour $colour;
 
-    public function __construct(ProductColour $productColour)
+    public function __construct(Colour $colour)
     {
-        $this->productColour = $productColour;
+        $this->colour = $colour;
     }
 
     public function getAll()
     {
-        return $this->productColour->latest()->get();
+        return $this->colour->latest()->get();
     }
 }

@@ -133,8 +133,8 @@ class ProductService
             if (isset($data['variants']) && is_array($data['variants'])) {
                 foreach ($data['variants'] as $variant) {
                     $product->variants()->create([
-                        'colour_id' => $variant['colour_id'],
-                        'size_id' => $variant['size_id'],
+                        'colour_id' => $variant['colour_id'] ?? null,
+                        'size_id' => $variant['size_id'] ?? null,
                         'quantity' => $variant['quantity'] ?? 0,
                     ]);
                 }
@@ -210,8 +210,8 @@ class ProductService
                 if (is_array($data['variants']) && !empty($data['variants'])) {
                     foreach ($data['variants'] as $variant) {
                         $product->variants()->create([
-                            'colour_id' => $variant['colour_id'],
-                            'size_id' => $variant['size_id'],
+                            'colour_id' => $variant['colour_id'] ?? null,
+                            'size_id' => $variant['size_id'] ?? null,
                             'quantity' => $variant['quantity'] ?? 0,
                         ]);
                     }

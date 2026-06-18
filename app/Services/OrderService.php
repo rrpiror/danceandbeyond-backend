@@ -14,6 +14,7 @@ use App\Repositories\OrderStatusRepository;
 use App\Repositories\PaymentMethodRepository;
 use App\Repositories\ProductRepository;
 use App\Repositories\SellerOrderRepository;
+use App\Repositories\TransactionRepository;
 use App\Services\PaymentService;
 use App\Repositories\UserAddressRepository;
 use App\Repositories\PayoutTransactionRepository;
@@ -22,6 +23,10 @@ use App\Models\Product;
 use App\Models\SellerOrder;
 use App\Models\Order;
 use App\Http\Resources\OrderResource;
+use Stripe\BalanceTransaction;
+use Stripe\Charge;
+use Stripe\PaymentIntent;
+use Stripe\Transfer;
 
 /**
  * OrderService handles all order-related business logic including creation, updates, and retrieval of orders.
@@ -39,8 +44,9 @@ class OrderService
     protected SellerOrderRepository $sellerOrderRepository;
     protected OrderStatusRepository $orderStatusRepository;
     protected PayoutTransactionRepository $payoutTransactionRepository;
+    protected TransactionRepository $transactionRepository;
 
-    public function __construct(OrderRepository $orderRepository, OrderItemRepository $orderItemRepository, ProductRepository $productRepository, UserAddressRepository $userAddressRepository, AddressRepository $addressRepository, PaymentMethodRepository $paymentMethodRepository, PaymentService $paymentService, SellerOrderRepository $sellerOrderRepository, OrderStatusRepository $orderStatusRepository, PayoutTransactionRepository $payoutTransactionRepository)
+    public function __construct(OrderRepository $orderRepository, OrderItemRepository $orderItemRepository, ProductRepository $productRepository, UserAddressRepository $userAddressRepository, AddressRepository $addressRepository, PaymentMethodRepository $paymentMethodRepository, PaymentService $paymentService, SellerOrderRepository $sellerOrderRepository, OrderStatusRepository $orderStatusRepository, PayoutTransactionRepository $payoutTransactionRepository, TransactionRepository $transactionRepository)
     {
         $this->orderRepository = $orderRepository;
         $this->orderItemRepository = $orderItemRepository;
@@ -52,6 +58,7 @@ class OrderService
         $this->sellerOrderRepository = $sellerOrderRepository;
         $this->orderStatusRepository = $orderStatusRepository;
         $this->payoutTransactionRepository = $payoutTransactionRepository;
+        $this->transactionRepository = $transactionRepository;
     }
 
     /**
@@ -245,7 +252,13 @@ class OrderService
             'amount' => $totalAmount
         ]);
 
-        $pendingStatus = $this->orderStatusRepository->findById(env('ORDER_STATUS_PENDING_ID'));
+        $pendingStatus = $this->orderStatusRepository->findById(env('ORDER_STATUS_PENDING_ID'))
+            ?? $this->orderStatusRepository->getStatusByName('Pending');
+
+        if (!$pendingStatus) {
+            throw new Exception('Pending order status is not configured', 422);
+        }
+
         $sellerOrder->statuses()->attach($pendingStatus->id);
 
         return $sellerOrder;
@@ -269,7 +282,7 @@ class OrderService
             $orderItem = $this->orderItemRepository->create([
                 'seller_order_id' => $sellerOrder->id,
                 'product_id' => $product->id,
-                'variant_id' => $item['variant_id'],
+                'variant_id' => $item['variant_id'] ?? null,
                 'quantity' => $item['quantity'],
                 'price' => $product->price,
                 'product_snapshot' => json_encode($product_snapshot)
@@ -284,8 +297,7 @@ class OrderService
 
             // process variant
             if (isset($item['variant_id'])) {
-                $variant = ProductVariant::find($item['variant_id']);
-                $this->reduceProductVariantQuantity($variant->id, $item['quantity']);
+                $this->reduceProductVariantQuantity($item['variant_id'], $item['quantity']);
             }
         }
     }
@@ -355,7 +367,7 @@ class OrderService
         $hires = $this->sellerOrderRepository->findHireProductsBySeller($user->id)->count();
         $payouts = $this->payoutTransactionRepository->getSellerTransactions($user->id);
         $commission = $payouts->sum('commission');
-        $income = $payouts->sum('transaction.amount') - $commission;
+        $income = $payouts->sum('transaction.amount');
 
         return [
             'sales' => $sales,
@@ -419,6 +431,144 @@ class OrderService
         }
     }
 
+    public function releaseSellerOrderFunds($sellerOrderId)
+    {
+        DB::beginTransaction();
+
+        try {
+            $sellerOrder = SellerOrder::with(['seller', 'statuses', 'order.stripeIntent'])
+                ->where('id', $sellerOrderId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$sellerOrder) {
+                throw new Exception('Seller order not found.', 404);
+            }
+
+            if ((int) $sellerOrder->order->user_id !== (int) Auth::id()) {
+                throw new Exception('Only the buyer can approve release for this seller order.', 403);
+            }
+
+            if ($sellerOrder->transferred_at) {
+                throw new Exception('Funds have already been released for this seller order.', 422);
+            }
+
+            if (!$sellerOrder->seller?->stripe_seller_id) {
+                throw new Exception('Seller has not set up Stripe payouts.', 422);
+            }
+
+            if ($sellerOrder->order?->stripeIntent?->status !== 'succeeded') {
+                throw new Exception('Payment must be confirmed before funds can be released.', 422);
+            }
+
+            $statusNames = $sellerOrder->statuses->pluck('name');
+            if (!$statusNames->contains('Payment Confirmed') || !$statusNames->contains('Delivered')) {
+                throw new Exception('Seller order must be payment confirmed and delivered before release.', 422);
+            }
+
+            $payout = $this->calculateSellerOrderPayout($sellerOrder);
+
+            if ($payout['payout_amount'] <= 0) {
+                throw new Exception('Payout amount must be greater than zero.', 422);
+            }
+
+            $transfer = Transfer::create([
+                'amount' => $payout['payout_amount'],
+                'currency' => env('CASHIER_CURRENCY', 'gbp'),
+                'destination' => $sellerOrder->seller->stripe_seller_id,
+                'description' => "Payout for seller order #{$sellerOrder->id}",
+                'metadata' => [
+                    'seller_order_id' => $sellerOrder->id,
+                    'order_id' => $sellerOrder->order_id,
+                    'seller_id' => $sellerOrder->seller_id,
+                    'gross_amount' => $payout['gross_amount'],
+                    'platform_fee' => $payout['platform_fee'],
+                    'stripe_fee' => $payout['stripe_fee'],
+                ],
+            ]);
+
+            $sellerOrder->update(['transferred_at' => now()]);
+
+            $transaction = $this->transactionRepository->create([
+                'stripe_payment_id' => $transfer->id,
+                'amount' => $payout['payout_amount'] / 100,
+                'type' => 'payout',
+            ]);
+
+            $this->payoutTransactionRepository->create([
+                'transaction_id' => $transaction->id,
+                'seller_id' => $sellerOrder->seller_id,
+                'commission' => $payout['platform_fee'] / 100,
+            ]);
+
+            DB::commit();
+
+            return $this->sellerOrderRepository->findById($sellerOrderId);
+        } catch (Exception $ex) {
+            DB::rollBack();
+            throw new Exception($ex->getMessage(), $ex->getCode() ?: 422);
+        }
+    }
+
+    public function calculateSellerOrderPayout(SellerOrder $sellerOrder): array
+    {
+        $grossAmount = (int) round($sellerOrder->amount * 100);
+        $platformFee = (int) round($grossAmount * (float) env('PLATFORM_FEE', 0));
+        $stripeFee = $this->calculateSellerOrderStripeFeeShare($sellerOrder, $grossAmount);
+        $payoutAmount = $grossAmount - $platformFee - $stripeFee;
+
+        return [
+            'gross_amount' => $grossAmount,
+            'platform_fee' => $platformFee,
+            'stripe_fee' => $stripeFee,
+            'payout_amount' => $payoutAmount,
+        ];
+    }
+
+    private function calculateSellerOrderStripeFeeShare(SellerOrder $sellerOrder, int $grossAmount): int
+    {
+        $order = $sellerOrder->order;
+        $orderTotal = (int) round($order->amount * 100);
+
+        if ($orderTotal <= 0) {
+            throw new Exception('Order total must be greater than zero.', 422);
+        }
+
+        $totalStripeFee = $this->getStripeFeeForOrder($order);
+
+        return (int) round($totalStripeFee * ($grossAmount / $orderTotal));
+    }
+
+    private function getStripeFeeForOrder(Order $order): int
+    {
+        $paymentIntentId = $order->stripeIntent?->payment_intent_id;
+
+        if (!$paymentIntentId) {
+            throw new Exception('Stripe payment intent is missing for this order.', 422);
+        }
+
+        $paymentIntent = PaymentIntent::retrieve($paymentIntentId);
+        $latestCharge = $paymentIntent->latest_charge;
+        $chargeId = is_string($latestCharge) ? $latestCharge : ($latestCharge->id ?? null);
+
+        if (!$chargeId) {
+            throw new Exception('Stripe charge is not available for this order yet.', 422);
+        }
+
+        $charge = Charge::retrieve($chargeId);
+        $balanceTransaction = $charge->balance_transaction;
+
+        if (is_string($balanceTransaction)) {
+            $balanceTransaction = BalanceTransaction::retrieve($balanceTransaction);
+        }
+
+        if (!$balanceTransaction || !isset($balanceTransaction->fee)) {
+            throw new Exception('Stripe fee is not available for this order yet.', 422);
+        }
+
+        return (int) $balanceTransaction->fee;
+    }
+
     /**
      * Calculate the total price for an item
      * For sale products: price * quantity
@@ -477,7 +627,7 @@ class OrderService
         // Check if sufficient quantity is available
         if ($productVariant->quantity < $requestedQuantity) {
             throw new Exception(
-                "Insufficient stock for {$productName} - {$productVariant->colour->name} {$productVariant->size->name}. Available: {$productVariant->quantity}, Requested: {$requestedQuantity}",
+                "Insufficient stock for {$productName}. Available: {$productVariant->quantity}, Requested: {$requestedQuantity}",
                 422
             );
         }

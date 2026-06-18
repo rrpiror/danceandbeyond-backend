@@ -15,8 +15,8 @@ class SellerOrderRepository
         'orderItems.variant.size',
         'orderItems.variant.colour',
         'order',
-        'order.user:id,name,email,phone_number',
-        'seller:id,name,email,phone_number',
+        'order.user:id,name,email',
+        'seller:id,name,email',
         'statuses',
     ];
 
@@ -32,7 +32,23 @@ class SellerOrderRepository
 
     public function findOldOrders()
     {
-        return $this->sellerOrder->with('seller')->where('created_at', '<=', now()->subDays(14))->whereNull('transferred_at')->where('status', 'completed')->get();
+        $holdDays = (int) env('PAYOUT_HOLD_DAYS', 14);
+
+        return $this->sellerOrder
+            ->with(['seller', 'statuses', 'order.stripeIntent'])
+            ->whereNull('transferred_at')
+            ->whereHas('order.stripeIntent', function ($query) {
+                $query->where('status', 'succeeded');
+            })
+            ->whereHas('statuses', function ($query) {
+                $query->where('name', 'Payment Confirmed');
+            })
+            ->whereHas('statuses', function ($query) use ($holdDays) {
+                $query
+                    ->where('name', 'Delivered')
+                    ->where('seller_order_statuses.created_at', '<=', now()->subDays($holdDays));
+            })
+            ->get();
     }
     public function findByOrderId($orderId)
     {
@@ -63,7 +79,11 @@ class SellerOrderRepository
 
     public function findAllSellerOrders($sellerId)
     {
-        $sellerOrders = $this->sellerOrder->where('seller_id', $sellerId)->latest()->get()->load($this->detailedRelations);
+        $sellerOrders = $this->sellerOrder
+            ->where('seller_id', $sellerId)
+            ->latest()
+            ->get()
+            ->load($this->detailedRelations);
         
         return new SellerOrderCollectionResource($sellerOrders);
     }

@@ -7,6 +7,15 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class SellerOrderResource extends JsonResource
 {
+    private function decodeJsonField($value)
+    {
+        if (is_array($value) || is_object($value) || $value === null) {
+            return $value;
+        }
+
+        return json_decode($value);
+    }
+
     /**
      * Transform the resource into an array.
      *
@@ -30,18 +39,18 @@ class SellerOrderResource extends JsonResource
                 'id' => $this->order->user->id,
                 'name' => $this->order->user->name,
                 'email' => $this->order->user->email,
-                'phone_number' => $this->order->user->phone_number,
+                'phone_number' => $this->order->user->phone_number ?? null,
             ],
 
             'seller' => [
                 'id' => $this->seller->id,
                 'name' => $this->seller->name,
                 'email' => $this->seller->email,
-                'phone_number' => $this->seller->phone_number,
+                'phone_number' => $this->seller->phone_number ?? null,
             ],
             
             // Decode and include addresses from the order
-            'addresses' => json_decode($this->order->addresses),
+            'addresses' => $this->decodeJsonField($this->order->addresses),
             
             // Transform order items with decoded product snapshots
             'order_items' => $this->orderItems->map(function ($orderItem) {
@@ -52,7 +61,7 @@ class SellerOrderResource extends JsonResource
                     'product_id' => $orderItem->product_id,
                     'quantity' => $orderItem->quantity,
                     'price' => $orderItem->price,
-                    'product_snapshot' => json_decode($orderItem->product_snapshot),
+                    'product_snapshot' => $this->decodeJsonField($orderItem->product_snapshot),
                     'deleted_at' => $orderItem->deleted_at,
                     'created_at' => $orderItem->created_at,
                     'updated_at' => $orderItem->updated_at,

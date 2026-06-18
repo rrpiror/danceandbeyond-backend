@@ -26,11 +26,18 @@ class ProductVariant extends Model
 
     public function colour()
     {
-        return $this->belongsTo(ProductColour::class, 'colour_id');
+        return $this->belongsTo(ProductColour::class, 'colour_id')->withDefault([
+            'id' => 0,
+            'name' => 'No colour',
+            'hexcode' => '#CCCCCC',
+        ]);
     }
 
     public function size()
     {
-        return $this->belongsTo(ProductSize::class, 'size_id');
+        return $this->belongsTo(ProductSize::class, 'size_id')->withDefault([
+            'id' => 0,
+            'name' => 'One size',
+        ]);
     }
 }

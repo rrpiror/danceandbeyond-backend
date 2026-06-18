@@ -99,6 +99,13 @@ class ProductController extends Controller
                 return apiResponse(false, $validation, 'Invalid data', 5, 422);
             }
 
+            $user = Auth::user();
+            if (!$user?->stripe_seller_id) {
+                return apiResponse(false, [
+                    'stripe' => 'Please set up payouts before listing an item.',
+                ], 'Please set up payouts before listing an item.', 5, 422);
+            }
+
             $product = $this->productService->create($request->all());
             return apiResponse(true, $product);
         } catch (Exception $ex) {
