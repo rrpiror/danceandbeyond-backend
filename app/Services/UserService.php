@@ -132,8 +132,19 @@ class UserService
                 throw new Exception('User not found', 404);
             }
 
+            $businessProfile = [
+                'name' => $user->type === 'organisation' ? $user->name : 'Vestu seller',
+                'product_description' => 'I sell new and pre-owned dancewear through the Vestu marketplace. Vestu processes customer payments and releases payouts to sellers after delivery or approval.',
+                'url' => env('STRIPE_BUSINESS_PROFILE_URL', 'https://vestu.co.uk'),
+                'support_url' => env('STRIPE_SUPPORT_URL', 'https://vestu.co.uk'),
+                'support_email' => env('STRIPE_SUPPORT_EMAIL', 'support@vestu.co.uk'),
+            ];
+
             if ($user->stripe_seller_id) {
                 $account = Account::retrieve($user->stripe_seller_id);
+                Account::update($account->id, [
+                    'business_profile' => $businessProfile,
+                ]);
             } else {
                 $businessType = $user->type === 'organisation' ? 'company' : 'individual';
 
@@ -142,10 +153,7 @@ class UserService
                     'country' => 'GB',
                     'email' => $user->email,
                     'business_type' => $businessType,
-                    'business_profile' => [
-                        'name' => $user->name,
-                        'product_description' => 'Dancewear marketplace seller',
-                    ],
+                    'business_profile' => $businessProfile,
                     'capabilities' => [
                         'card_payments' => ['requested' => true],
                         'transfers' => ['requested' => true],
