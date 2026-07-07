@@ -2,13 +2,13 @@
 
 namespace App\Repositories;
 
-use App\Models\Size;
+use App\Models\ProductSize;
 
 class ProductSizeRepository
 {
-    protected Size $size;
+    protected ProductSize $size;
 
-    public function __construct(Size $size)
+    public function __construct(ProductSize $size)
     {
         $this->size = $size;
     }

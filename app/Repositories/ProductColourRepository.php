@@ -2,13 +2,13 @@
 
 namespace App\Repositories;
 
-use App\Models\Colour;
+use App\Models\ProductColour;
 
 class ProductColourRepository
 {
-    protected Colour $colour;
+    protected ProductColour $colour;
 
-    public function __construct(Colour $colour)
+    public function __construct(ProductColour $colour)
     {
         $this->colour = $colour;
     }

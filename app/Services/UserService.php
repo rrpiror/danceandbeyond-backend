@@ -135,11 +135,16 @@ class UserService
             if ($user->stripe_seller_id) {
                 $account = Account::retrieve($user->stripe_seller_id);
             } else {
+                $businessType = $user->type === 'organisation' ? 'company' : 'individual';
+
                 $account = Account::create([
                     'type' => 'standard',
+                    'country' => 'GB',
                     'email' => $user->email,
+                    'business_type' => $businessType,
                     'business_profile' => [
                         'name' => $user->name,
+                        'product_description' => 'Dancewear marketplace seller',
                     ],
                     'capabilities' => [
                         'card_payments' => ['requested' => true],
@@ -156,6 +161,9 @@ class UserService
                 'refresh_url' => env('REFRESH_URL'),
                 'return_url' => env("RETURN_URL"),
                 'type' => 'account_onboarding',
+                'collection_options' => [
+                    'fields' => 'currently_due',
+                ],
             ]);
 
             return $accountLink->url;
