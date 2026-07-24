@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ProductVariant;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -151,19 +152,25 @@ class OrderService
             }
             $data['addresses'] = json_encode($addresses);
 
+            $data['items'] = collect($data['items'])->map(function ($item) use ($products) {
+                $product = $products[$item['product_id']];
+
+                if ($product->type === 'hire') {
+                    $item['hiring_days'] = $this->calculateHireDaysFromDates($item);
+                }
+
+                return $item;
+            })->toArray();
+
             // Calculate total amount and prepare items for payment
             $itemsCollection = collect($data['items']);
             $itemsArrayForStripe = [];
-            $errors = [];
 
             foreach ($itemsCollection as $item) {
                 $product = $products[$item['product_id']];
-                // For hire products, validate hiring_days
+
                 if ($product->type === 'hire') {
-                    $hiringDays = $item['hiring_days'] ?? null;
-                    if (!$hiringDays || $hiringDays < $product->hiringDetail->min_hire_days) {
-                        $errors[] = "Product {$product->name} requires minimum {$product->hiringDetail->min_hire_days} hire days";
-                    }
+                    $this->validateHireItem($item, $product);
                 }
 
                 // Validate stock availability
@@ -180,9 +187,6 @@ class OrderService
                     'product_id' => $item['product_id']
                 ];
 
-                if (!empty($errors)) {
-                    throw new Exception(implode(', ', $errors), 422);
-                }
             }
 
             $data['amount'] = $itemsCollection->sum(function ($item) use ($products) {
@@ -284,14 +288,16 @@ class OrderService
                 'product_id' => $product->id,
                 'variant_id' => $item['variant_id'] ?? null,
                 'quantity' => $item['quantity'],
-                'price' => $product->price,
+                'price' => $this->calculateSingleItemPrice($item, $product),
                 'product_snapshot' => json_encode($product_snapshot)
             ]);
 
             // If it's a hire product, create hiring detail
             if ($product->type === 'hire' && isset($item['hiring_days'])) {
                 $orderItem->hiringDetail()->create([
-                    'hiring_days' => $item['hiring_days']
+                    'hiring_days' => $item['hiring_days'],
+                    'start_date' => $item['start_date'] ?? null,
+                    'end_date' => $item['end_date'] ?? null,
                 ]);
             }
 
@@ -572,7 +578,8 @@ class OrderService
     /**
      * Calculate the total price for an item
      * For sale products: price * quantity
-     * For hire products: (price * quantity) + (extra days * additional_fee_per_day * quantity)
+     * For hire products: daily hire price * hire days * quantity.
+     * The additional_fee_per_day field is a late return fee and is not charged at checkout.
      * 
      * @param array $item Item data from request
      * @param Product $product Product model
@@ -585,22 +592,59 @@ class OrderService
         return $quantityPrice;
     }
 
+    private function calculateHireDaysFromDates(array $item): int
+    {
+        if (empty($item['start_date']) || empty($item['end_date'])) {
+            throw new Exception('Hire products require a start date and end date.', 422);
+        }
+
+        $startDate = Carbon::parse($item['start_date'])->startOfDay();
+        $endDate = Carbon::parse($item['end_date'])->startOfDay();
+
+        if ($endDate->lt($startDate)) {
+            throw new Exception('Hire end date must be on or after the start date.', 422);
+        }
+
+        return $startDate->diffInDays($endDate) + 1;
+    }
+
+    private function validateHireItem(array $item, Product $product): void
+    {
+        if (!$product->hiringDetail) {
+            throw new Exception("Product {$product->name} is missing hiring details.", 422);
+        }
+
+        $hiringDays = $item['hiring_days'] ?? $this->calculateHireDaysFromDates($item);
+
+        if ($hiringDays < $product->hiringDetail->min_hire_days) {
+            throw new Exception(
+                "Product {$product->name} requires minimum {$product->hiringDetail->min_hire_days} hire days",
+                422
+            );
+        }
+
+        $startDate = Carbon::parse($item['start_date'])->startOfDay();
+        $endDate = Carbon::parse($item['end_date'])->startOfDay();
+
+        foreach ($product->unavailabilityDurations as $duration) {
+            $unavailableStart = Carbon::parse($duration->start_date)->startOfDay();
+            $unavailableEnd = Carbon::parse($duration->end_date)->startOfDay();
+
+            if ($startDate->lte($unavailableEnd) && $endDate->gte($unavailableStart)) {
+                throw new Exception(
+                    "Product {$product->name} is unavailable for the selected hire dates.",
+                    422
+                );
+            }
+        }
+    }
+
     private function calculateSingleItemPrice($item, $product)
     {
         $basePrice = $product->price;
 
-        // For hire products with hiring days
-        if ($product->type === 'hire' && isset($item['hiring_days']) && $product->hiringDetail) {
-            $hiringDays = $item['hiring_days'];
-            $minHireDays = $product->hiringDetail->min_hire_days;
-            $additionalFeePerDay = $product->hiringDetail->additional_fee_per_day;
-
-            // Base price covers minHireDays, additional days are charged separately
-            if ($hiringDays > $minHireDays) {
-                $extraDays = $hiringDays - $minHireDays;
-                $additionalCost = $extraDays * $additionalFeePerDay;
-                return $basePrice + $additionalCost;
-            }
+        if ($product->type === 'hire' && isset($item['hiring_days'])) {
+            return $basePrice * $item['hiring_days'];
         }
 
         return $basePrice;

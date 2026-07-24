@@ -147,8 +147,7 @@ class ProductService
                 }
             }
 
-            // Handle unavailability durations for all products (both sale and hire)
-            if (isset($data['unavailability_durations']) && is_array($data['unavailability_durations'])) {
+            if ($data['type'] == 'hire' && isset($data['unavailability_durations']) && is_array($data['unavailability_durations'])) {
                 $unavailabilityData = collect($data['unavailability_durations'])->map(function($duration) {
                     return [
                         'start_date' => $duration['start_date'],
@@ -225,12 +224,11 @@ class ProductService
                 }
             }
 
-            // Handle unavailability durations for all products (both sale and hire)
-            if (isset($data['unavailability_durations'])) {
-                // Delete existing unavailability durations
+            if ($data['type'] != 'hire') {
                 $product->unavailabilityDurations()->delete();
-                
-                // Create new ones if provided
+            } elseif (isset($data['unavailability_durations'])) {
+                $product->unavailabilityDurations()->delete();
+
                 if (is_array($data['unavailability_durations']) && !empty($data['unavailability_durations'])) {
                     $unavailabilityData = collect($data['unavailability_durations'])->map(function($duration) {
                         return [

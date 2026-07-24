@@ -18,6 +18,9 @@ class OrderController extends Controller
         'items.*.product_id' => 'required|integer|exists:products,id',
         'items.*.quantity' => 'required|integer|min:1',
         'items.*.variant_id' => 'nullable|integer|exists:product_variants,id',
+        'items.*.hiring_days' => 'nullable|integer|min:1',
+        'items.*.start_date' => 'nullable|date',
+        'items.*.end_date' => 'nullable|date',
         'billing_address_id' => 'required|integer|exists:addresses,id',
         'shipping_address_id' => 'required|integer|exists:addresses,id',
     ];
