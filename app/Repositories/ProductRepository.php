@@ -120,7 +120,7 @@ class ProductRepository
 
         $query = $query->withCount('reviews')
             ->withAvg('reviews', 'rating')
-            ->with('media')
+            ->with('media', 'brand', 'hiringDetail')
             ->latest();
 
         // Get paginated results
@@ -152,7 +152,7 @@ class ProductRepository
             ->whereHas('variants', function ($variantQuery) {
                 $variantQuery->where('quantity', '>', 0);
             })
-            ->with('media', 'brand')
+            ->with('media', 'brand', 'hiringDetail')
             ->latest()
             ->get();
     }

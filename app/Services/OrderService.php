@@ -23,10 +23,12 @@ use App\Models\StripeIntent;
 use App\Models\Product;
 use App\Models\SellerOrder;
 use App\Models\Order;
+use App\Models\UnavailabilityDuration;
 use App\Http\Resources\OrderResource;
 use Stripe\BalanceTransaction;
 use Stripe\Charge;
 use Stripe\PaymentIntent;
+use Stripe\Refund;
 use Stripe\Transfer;
 
 /**
@@ -179,6 +181,7 @@ class OrderService
                 }
 
                 $price = $this->calculateSingleItemPrice($item, $product);
+                $deposit = $this->calculateHireDeposit($item, $product);
 
                 $itemsArrayForStripe[] = [
                     'quantity' => $item['quantity'],
@@ -187,10 +190,21 @@ class OrderService
                     'product_id' => $item['product_id']
                 ];
 
+                if ($deposit > 0) {
+                    $itemsArrayForStripe[] = [
+                        'quantity' => 1,
+                        'price' => $deposit * 100,
+                        'name' => "{$product->name} refundable deposit",
+                        'product_id' => $item['product_id']
+                    ];
+                }
+
             }
 
             $data['amount'] = $itemsCollection->sum(function ($item) use ($products) {
-                return $this->calculateItemPrice($item, $products[$item['product_id']]);
+                $product = $products[$item['product_id']];
+                return $this->calculateItemPrice($item, $product)
+                    + $this->calculateHireDeposit($item, $product);
             });
 
             // Create the main order
@@ -294,11 +308,28 @@ class OrderService
 
             // If it's a hire product, create hiring detail
             if ($product->type === 'hire' && isset($item['hiring_days'])) {
+                $startDate = isset($item['start_date'])
+                    ? Carbon::parse($item['start_date'])->startOfDay()
+                    : null;
+                $endDate = isset($item['end_date'])
+                    ? Carbon::parse($item['end_date'])->startOfDay()
+                    : null;
+
                 $orderItem->hiringDetail()->create([
                     'hiring_days' => $item['hiring_days'],
-                    'start_date' => $item['start_date'] ?? null,
-                    'end_date' => $item['end_date'] ?? null,
+                    'start_date' => $startDate?->toDateString(),
+                    'end_date' => $endDate?->toDateString(),
+                    'deposit_amount' => $this->calculateHireDeposit($item, $product),
+                    'deposit_status' => $this->calculateHireDeposit($item, $product) > 0 ? 'held' : 'none',
                 ]);
+
+                if ($startDate && $endDate) {
+                    UnavailabilityDuration::create([
+                        'product_id' => $product->id,
+                        'start_date' => $startDate->copy()->subDays(3)->toDateString(),
+                        'end_date' => $endDate->copy()->addDays(3)->toDateString(),
+                    ]);
+                }
             }
 
             // process variant
@@ -516,6 +547,160 @@ class OrderService
         }
     }
 
+    public function releaseSellerOrderDeposit($sellerOrderId)
+    {
+        DB::beginTransaction();
+
+        try {
+            $sellerOrder = $this->depositSellerOrderQuery($sellerOrderId);
+
+            if ((int) $sellerOrder->order->user_id !== (int) Auth::id()) {
+                throw new Exception('Only the buyer can release a deposit.', 403);
+            }
+
+            $depositAmount = $this->heldDepositAmountInPence($sellerOrder);
+            if ($depositAmount <= 0) {
+                throw new Exception('No held deposit is available to release.', 422);
+            }
+
+            Refund::create([
+                'payment_intent' => $sellerOrder->order->stripeIntent->payment_intent_id,
+                'amount' => $depositAmount,
+                'metadata' => [
+                    'seller_order_id' => $sellerOrder->id,
+                    'order_id' => $sellerOrder->order_id,
+                    'reason' => 'hire_deposit_released',
+                ],
+            ]);
+
+            $this->updateDepositStatus($sellerOrder, 'released');
+
+            DB::commit();
+
+            return $this->sellerOrderRepository->findById($sellerOrderId);
+        } catch (Exception $ex) {
+            DB::rollBack();
+            throw new Exception($ex->getMessage(), $ex->getCode() ?: 422);
+        }
+    }
+
+    public function retainSellerOrderDeposit($sellerOrderId)
+    {
+        DB::beginTransaction();
+
+        try {
+            $sellerOrder = $this->depositSellerOrderQuery($sellerOrderId);
+
+            if ((int) $sellerOrder->seller_id !== (int) Auth::id()) {
+                throw new Exception('Only the seller can retain a deposit.', 403);
+            }
+
+            if (!$sellerOrder->seller?->stripe_seller_id) {
+                throw new Exception('Seller has not set up Stripe payouts.', 422);
+            }
+
+            $depositAmount = $this->heldDepositAmountInPence($sellerOrder);
+            if ($depositAmount <= 0) {
+                throw new Exception('No held deposit is available to retain.', 422);
+            }
+
+            Transfer::create([
+                'amount' => $depositAmount,
+                'currency' => env('CASHIER_CURRENCY', 'gbp'),
+                'destination' => $sellerOrder->seller->stripe_seller_id,
+                'description' => "Retained hire deposit for seller order #{$sellerOrder->id}",
+                'metadata' => [
+                    'seller_order_id' => $sellerOrder->id,
+                    'order_id' => $sellerOrder->order_id,
+                    'reason' => 'hire_deposit_retained',
+                ],
+            ]);
+
+            $this->updateDepositStatus($sellerOrder, 'retained');
+
+            DB::commit();
+
+            return $this->sellerOrderRepository->findById($sellerOrderId);
+        } catch (Exception $ex) {
+            DB::rollBack();
+            throw new Exception($ex->getMessage(), $ex->getCode() ?: 422);
+        }
+    }
+
+    public function disputeSellerOrderDeposit($sellerOrderId, ?string $reason)
+    {
+        DB::beginTransaction();
+
+        try {
+            $sellerOrder = $this->depositSellerOrderQuery($sellerOrderId);
+
+            if (!in_array((int) Auth::id(), [(int) $sellerOrder->seller_id, (int) $sellerOrder->order->user_id], true)) {
+                throw new Exception('Only the buyer or seller can dispute a deposit.', 403);
+            }
+
+            if ($this->heldDepositAmountInPence($sellerOrder) <= 0) {
+                throw new Exception('No held deposit is available to dispute.', 422);
+            }
+
+            $sellerOrder->orderItems->each(function ($orderItem) use ($reason) {
+                if ($orderItem->hiringDetail && $orderItem->hiringDetail->deposit_status === 'held') {
+                    $orderItem->hiringDetail->update([
+                        'deposit_status' => 'disputed',
+                        'deposit_dispute_reason' => $reason,
+                    ]);
+                }
+            });
+
+            DB::commit();
+
+            return $this->sellerOrderRepository->findById($sellerOrderId);
+        } catch (Exception $ex) {
+            DB::rollBack();
+            throw new Exception($ex->getMessage(), $ex->getCode() ?: 422);
+        }
+    }
+
+    private function depositSellerOrderQuery($sellerOrderId): SellerOrder
+    {
+        $sellerOrder = SellerOrder::with(['seller', 'order.stripeIntent', 'orderItems.hiringDetail'])
+            ->where('id', $sellerOrderId)
+            ->lockForUpdate()
+            ->first();
+
+        if (!$sellerOrder) {
+            throw new Exception('Seller order not found.', 404);
+        }
+
+        if ($sellerOrder->order?->stripeIntent?->status !== 'succeeded') {
+            throw new Exception('Payment must be confirmed before deposits can be resolved.', 422);
+        }
+
+        return $sellerOrder;
+    }
+
+    private function heldDepositAmountInPence(SellerOrder $sellerOrder): int
+    {
+        return (int) round($sellerOrder->orderItems->sum(function ($orderItem) {
+            if (!$orderItem->hiringDetail || $orderItem->hiringDetail->deposit_status !== 'held') {
+                return 0;
+            }
+
+            return (float) $orderItem->hiringDetail->deposit_amount;
+        }) * 100);
+    }
+
+    private function updateDepositStatus(SellerOrder $sellerOrder, string $status): void
+    {
+        $sellerOrder->orderItems->each(function ($orderItem) use ($status) {
+            if ($orderItem->hiringDetail && $orderItem->hiringDetail->deposit_status === 'held') {
+                $orderItem->hiringDetail->update([
+                    'deposit_status' => $status,
+                    'deposit_resolved_at' => now(),
+                ]);
+            }
+        });
+    }
+
     public function calculateSellerOrderPayout(SellerOrder $sellerOrder): array
     {
         $grossAmount = (int) round($sellerOrder->amount * 100);
@@ -606,6 +791,15 @@ class OrderService
         }
 
         return $startDate->diffInDays($endDate) + 1;
+    }
+
+    private function calculateHireDeposit(array $item, Product $product): float
+    {
+        if ($product->type !== 'hire' || !$product->hiringDetail) {
+            return 0;
+        }
+
+        return (float) ($product->hiringDetail->deposit_amount ?? 0) * (int) $item['quantity'];
     }
 
     private function validateHireItem(array $item, Product $product): void

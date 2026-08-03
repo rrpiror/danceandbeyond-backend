@@ -69,6 +69,9 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/seller/orders/{id}', [OrderController::class, 'getSellerOrderById']);
     Route::post('/seller/orders/{id}/status', [OrderController::class, 'addStatusToSellerOrder']);
     Route::post('/seller/orders/{id}/release-funds', [OrderController::class, 'releaseSellerOrderFunds']);
+    Route::post('/seller/orders/{id}/deposit/release', [OrderController::class, 'releaseSellerOrderDeposit']);
+    Route::post('/seller/orders/{id}/deposit/retain', [OrderController::class, 'retainSellerOrderDeposit']);
+    Route::post('/seller/orders/{id}/deposit/dispute', [OrderController::class, 'disputeSellerOrderDeposit']);
     
     // Order management (authenticated)
     Route::apiResource('/orders', OrderController::class);

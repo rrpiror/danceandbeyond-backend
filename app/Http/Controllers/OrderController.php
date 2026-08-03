@@ -151,4 +151,45 @@ class OrderController extends Controller
             return apiResponse(false, $ex->getMessage(), $ex->getMessage() ?? 'Something went wrong', $ex->getCode() ?? 1, $ex->getCode() || 500);
         }
     }
+
+    public function releaseSellerOrderDeposit($sellerOrderId)
+    {
+        try {
+            $sellerOrder = $this->orderService->releaseSellerOrderDeposit($sellerOrderId);
+
+            return apiResponse(true, $sellerOrder, "Deposit released successfully");
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), $ex->getMessage() ?? 'Something went wrong', $ex->getCode() ?? 1, $ex->getCode() || 500);
+        }
+    }
+
+    public function retainSellerOrderDeposit($sellerOrderId)
+    {
+        try {
+            $sellerOrder = $this->orderService->retainSellerOrderDeposit($sellerOrderId);
+
+            return apiResponse(true, $sellerOrder, "Deposit retained successfully");
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), $ex->getMessage() ?? 'Something went wrong', $ex->getCode() ?? 1, $ex->getCode() || 500);
+        }
+    }
+
+    public function disputeSellerOrderDeposit(Request $request, $sellerOrderId)
+    {
+        try {
+            $validation = $this->validationService->validate($request, [
+                'reason' => 'required|string|min:10',
+            ]);
+
+            if ($validation) {
+                return apiResponse(false, $validation, 'Invalid data', 5, 422);
+            }
+
+            $sellerOrder = $this->orderService->disputeSellerOrderDeposit($sellerOrderId, $request->reason);
+
+            return apiResponse(true, $sellerOrder, "Deposit disputed successfully");
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), $ex->getMessage() ?? 'Something went wrong', $ex->getCode() ?? 1, $ex->getCode() || 500);
+        }
+    }
 }

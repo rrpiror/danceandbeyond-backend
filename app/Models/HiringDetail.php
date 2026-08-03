@@ -13,6 +13,12 @@ class HiringDetail extends Model
     protected $fillable = [
         'product_id',
         'min_hire_days',
-        'additional_fee_per_day'
+        'additional_fee_per_day',
+        'deposit_amount',
+    ];
+
+    protected $casts = [
+        'additional_fee_per_day' => 'decimal:2',
+        'deposit_amount' => 'decimal:2',
     ];
 }

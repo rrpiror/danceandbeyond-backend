@@ -33,7 +33,7 @@ class PaymentService
         // Calculate total amount in pence
         $totalAmount = 0;
         foreach ($items as $item) {
-            $totalAmount += $item['price'] * $item['quantity'];
+            $totalAmount += (int) round($item['price'] * $item['quantity']);
         }
 
         // Create Payment Intent
