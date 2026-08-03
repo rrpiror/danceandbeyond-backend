@@ -23,7 +23,7 @@ class OrderItemHiringDetail extends Model
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
-        'deposit_amount' => 'decimal:2',
+        'deposit_amount' => 'float',
         'deposit_resolved_at' => 'datetime',
     ];
 

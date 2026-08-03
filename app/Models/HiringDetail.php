@@ -18,7 +18,7 @@ class HiringDetail extends Model
     ];
 
     protected $casts = [
-        'additional_fee_per_day' => 'decimal:2',
-        'deposit_amount' => 'decimal:2',
+        'additional_fee_per_day' => 'float',
+        'deposit_amount' => 'float',
     ];
 }
