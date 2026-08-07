@@ -28,6 +28,7 @@ class SellerOrderResource extends JsonResource
             'order_id' => $this->order_id,
             'seller_id' => $this->seller_id,
             'amount' => $this->amount,
+            'delivery_charge' => $this->delivery_charge ?? 0,
             'transferred_at' => $this->transferred_at,
             'statuses' => $this->statuses->sortBy('pivot.created_at')->values(),
             'deleted_at' => $this->deleted_at,

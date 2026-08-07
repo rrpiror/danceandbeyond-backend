@@ -20,12 +20,15 @@ class Product extends Model implements HasMedia
         'name',
         'description',
         'price',
+        'delivery_charge',
         'is_featured',
         'type'
     ];
 
     protected $casts = [
-        'is_featured' => 'boolean'
+        'is_featured' => 'boolean',
+        'price' => 'float',
+        'delivery_charge' => 'float',
     ];
 
     public function fulfillmentOptions()

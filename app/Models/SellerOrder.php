@@ -14,11 +14,14 @@ class SellerOrder extends Model
         'seller_id',
         'order_id',
         'amount',
+        'delivery_charge',
         'status',
         'transferred_at'
     ];
 
     protected $casts = [
+        'amount' => 'float',
+        'delivery_charge' => 'float',
         'transferred_at' => 'datetime',
     ];
 

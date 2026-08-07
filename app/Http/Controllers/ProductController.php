@@ -19,6 +19,7 @@ class ProductController extends Controller
         'name' => 'required',
         'description' => 'required',
         'price' => 'required',
+        'delivery_charge' => 'nullable|numeric|min:0',
         'type' => 'required',
         'fulfillment_option_ids' => 'required',
         'variants' => 'required'

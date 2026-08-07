@@ -167,6 +167,7 @@ class OrderService
             // Calculate total amount and prepare items for payment
             $itemsCollection = collect($data['items']);
             $itemsArrayForStripe = [];
+            $sellerDeliveryCharges = $this->calculateSellerDeliveryCharges($itemsCollection, $products);
 
             foreach ($itemsCollection as $item) {
                 $product = $products[$item['product_id']];
@@ -201,11 +202,24 @@ class OrderService
 
             }
 
+            foreach ($sellerDeliveryCharges as $sellerId => $deliveryCharge) {
+                if ($deliveryCharge <= 0) {
+                    continue;
+                }
+
+                $itemsArrayForStripe[] = [
+                    'quantity' => 1,
+                    'price' => $deliveryCharge * 100,
+                    'name' => 'Delivery charge',
+                    'product_id' => "delivery_seller_{$sellerId}"
+                ];
+            }
+
             $data['amount'] = $itemsCollection->sum(function ($item) use ($products) {
                 $product = $products[$item['product_id']];
                 return $this->calculateItemPrice($item, $product)
                     + $this->calculateHireDeposit($item, $product);
-            });
+            }) + collect($sellerDeliveryCharges)->sum();
 
             // Create the main order
             $order = $this->orderRepository->create($data);
@@ -215,7 +229,7 @@ class OrderService
             });
 
             foreach ($sellerItems as $sellerId => $sellerProducts) {
-                $sellerOrder = $this->createSellerOrder($order->id, $sellerId, $sellerProducts, $products);
+                $sellerOrder = $this->createSellerOrder($order->id, $sellerId, $sellerProducts, $products, $sellerDeliveryCharges[$sellerId] ?? 0);
                 $this->createOrderItems($sellerOrder, $sellerProducts, $products);
             }
 
@@ -256,18 +270,19 @@ class OrderService
      * @param Collection $products All products involved in the order
      * @return SellerOrder
      */
-    private function createSellerOrder($orderId, $sellerId, $items, $products)
+    private function createSellerOrder($orderId, $sellerId, $items, $products, float $deliveryCharge = 0)
     {
         // Calculate total amount for this seller's items
         $totalAmount = collect($items)->sum(function ($item) use ($products) {
             return $this->calculateItemPrice($item, $products[$item['product_id']]);
-        });
+        }) + $deliveryCharge;
 
         // Create seller order and attach initial pending status
         $sellerOrder = $this->sellerOrderRepository->create([
             'order_id' => $orderId,
             'seller_id' => $sellerId,
-            'amount' => $totalAmount
+            'amount' => $totalAmount,
+            'delivery_charge' => $deliveryCharge
         ]);
 
         $pendingStatus = $this->orderStatusRepository->findById(env('ORDER_STATUS_PENDING_ID'))
@@ -348,6 +363,7 @@ class OrderService
             'name' => $product->name,
             'description' => $product->description,
             'price' => $product->price,
+            'delivery_charge' => $product->delivery_charge ?? 0,
             'type' => $product->type,
             'variants' => $variants,
             'hiring_details'=> $product->hiringDetail ? $product->hiringDetail->toArray() : null,
@@ -800,6 +816,32 @@ class OrderService
         }
 
         return (float) ($product->hiringDetail->deposit_amount ?? 0) * (int) $item['quantity'];
+    }
+
+    private function calculateSellerDeliveryCharges(Collection $items, Collection $products): array
+    {
+        $deliveryCharges = [];
+
+        foreach ($items as $item) {
+            $product = $products[$item['product_id']];
+
+            if (!$this->productHasDelivery($product)) {
+                continue;
+            }
+
+            $sellerId = $product->user_id;
+            $charge = (float) ($product->delivery_charge ?? 0);
+            $deliveryCharges[$sellerId] = max($deliveryCharges[$sellerId] ?? 0, $charge);
+        }
+
+        return $deliveryCharges;
+    }
+
+    private function productHasDelivery(Product $product): bool
+    {
+        return $product->fulfillmentOptions->contains(function ($option) {
+            return strtolower($option->name) === 'delivery';
+        });
     }
 
     private function validateHireItem(array $item, Product $product): void

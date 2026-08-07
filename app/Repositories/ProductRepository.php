@@ -142,7 +142,7 @@ class ProductRepository
 
     public function findByIds(array $ids)
     {
-        return $this->product->with('hiringDetail')->whereIn('id', $ids)->get();
+        return $this->product->with('hiringDetail', 'fulfillmentOptions')->whereIn('id', $ids)->get();
     }
 
     public function findProductsByUserId($userId)
