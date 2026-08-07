@@ -43,10 +43,26 @@ class SellerOrderRepository
             ->whereHas('statuses', function ($query) {
                 $query->where('name', 'Payment Confirmed');
             })
-            ->whereHas('statuses', function ($query) use ($holdDays) {
+            ->where(function ($query) use ($holdDays) {
                 $query
-                    ->where('name', 'Delivered')
-                    ->where('seller_order_statuses.created_at', '<=', now()->subDays($holdDays));
+                    ->where(function ($saleQuery) use ($holdDays) {
+                        $saleQuery
+                            ->whereDoesntHave('orderItems.hiringDetail')
+                            ->whereHas('statuses', function ($statusQuery) use ($holdDays) {
+                                $statusQuery
+                                    ->where('name', 'Delivered')
+                                    ->where('seller_order_statuses.created_at', '<=', now()->subDays($holdDays));
+                            });
+                    })
+                    ->orWhere(function ($hireQuery) use ($holdDays) {
+                        $hireQuery
+                            ->whereHas('orderItems.hiringDetail')
+                            ->whereHas('statuses', function ($statusQuery) use ($holdDays) {
+                                $statusQuery
+                                    ->where('name', 'Completed')
+                                    ->where('seller_order_statuses.created_at', '<=', now()->subDays($holdDays));
+                            });
+                    });
             })
             ->get();
     }

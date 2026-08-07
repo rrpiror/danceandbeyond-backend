@@ -85,14 +85,18 @@ class StripeWebHookService
             $stripeIntent->update(['status' => 'succeeded']);
         }
 
-        // Find seller orders and update status to payment confirmed
+        // Find seller orders and update status to payment confirmed/order confirmed
         $sellerOrders = $this->sellerOrderRepository->findByOrderId($orderId);
         $paymentConfirmedStatus = $this->orderStatusRepository->findById(env('ORDER_STATUS_PAYMENT_CONFIRMED_ID'));
+        $orderConfirmedStatus = $this->orderStatusRepository->getStatusByName('Order Confirmed');
 
         foreach ($sellerOrders as $sellerOrder) {
-            // Check if this status hasn't been added yet to avoid duplicates
-            if (!$sellerOrder->statuses()->where('order_status_id', $paymentConfirmedStatus->id)->exists()) {
+            if ($paymentConfirmedStatus && !$sellerOrder->statuses()->where('order_status_id', $paymentConfirmedStatus->id)->exists()) {
                 $sellerOrder->statuses()->attach($paymentConfirmedStatus->id);
+            }
+
+            if ($orderConfirmedStatus && !$sellerOrder->statuses()->where('order_status_id', $orderConfirmedStatus->id)->exists()) {
+                $sellerOrder->statuses()->attach($orderConfirmedStatus->id);
             }
         }
 

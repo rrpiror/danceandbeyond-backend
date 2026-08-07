@@ -460,8 +460,13 @@ class OrderService
      */
     public function addStatusToSellerOrder($sellerOrderId, $statusId)
     {
+        DB::beginTransaction();
+
         try {
-            $sellerOrder = $this->sellerOrderRepository->findByIdRaw($sellerOrderId);
+            $sellerOrder = SellerOrder::with(['statuses', 'order.stripeIntent', 'orderItems.hiringDetail'])
+                ->where('id', $sellerOrderId)
+                ->lockForUpdate()
+                ->first();
 
             if (!$sellerOrder) {
                 throw new Exception('Seller order not found.', 404);
@@ -473,15 +478,72 @@ class OrderService
                 throw new Exception('Status not found.', 404);
             }
 
-            // Check if status is already attached
+            $alreadyHasStatus = $sellerOrder->statuses->contains('id', $status->id);
+
+            $this->validateSellerOrderStatusTransition($sellerOrder, $status->name);
+
+            if ($alreadyHasStatus) {
+                DB::commit();
+
+                return $this->sellerOrderRepository->findById($sellerOrderId);
+            }
+
+            if ($status->name === 'Cancelled') {
+                $this->refundCancelledSellerOrder($sellerOrder);
+            }
+
             if (!$sellerOrder->statuses()->where('order_status_id', $statusId)->exists()) {
                 $sellerOrder->statuses()->attach($statusId);
             }
 
+            DB::commit();
+
             return $this->sellerOrderRepository->findById($sellerOrderId);
         } catch (Exception $ex) {
+            DB::rollBack();
             throw new Exception($ex->getMessage(), $ex->getCode() ?? 500);
         }
+    }
+
+    public function markOverdueSellerOrders(): int
+    {
+        $overdueStatus = $this->orderStatusRepository->getStatusByName('Overdue');
+
+        if (!$overdueStatus) {
+            throw new Exception('Overdue order status is not configured', 422);
+        }
+
+        $terminalStatuses = [
+            'Returned in Transit',
+            'Completed',
+            'Cancelled',
+            'Dispute',
+            'Dispute Resolved',
+        ];
+
+        $sellerOrders = SellerOrder::query()
+            ->whereHas('orderItems.hiringDetail', function ($query) {
+                $query->whereDate('end_date', '<', now()->toDateString());
+            })
+            ->whereHas('statuses', function ($query) {
+                $query->where('name', 'Delivered');
+            })
+            ->whereDoesntHave('statuses', function ($query) use ($terminalStatuses) {
+                $query->whereIn('name', $terminalStatuses);
+            })
+            ->with('statuses')
+            ->get();
+
+        $updated = 0;
+
+        foreach ($sellerOrders as $sellerOrder) {
+            if (!$sellerOrder->statuses()->where('order_status_id', $overdueStatus->id)->exists()) {
+                $sellerOrder->statuses()->attach($overdueStatus->id);
+                $updated++;
+            }
+        }
+
+        return $updated;
     }
 
     public function releaseSellerOrderFunds($sellerOrderId)
@@ -489,7 +551,7 @@ class OrderService
         DB::beginTransaction();
 
         try {
-            $sellerOrder = SellerOrder::with(['seller', 'statuses', 'order.stripeIntent'])
+            $sellerOrder = SellerOrder::with(['seller', 'statuses', 'order.stripeIntent', 'orderItems.hiringDetail'])
                 ->where('id', $sellerOrderId)
                 ->lockForUpdate()
                 ->first();
@@ -515,8 +577,12 @@ class OrderService
             }
 
             $statusNames = $sellerOrder->statuses->pluck('name');
-            if (!$statusNames->contains('Payment Confirmed') || !$statusNames->contains('Delivered')) {
-                throw new Exception('Seller order must be payment confirmed and delivered before release.', 422);
+            $releaseStatus = $this->isHireSellerOrder($sellerOrder) ? 'Completed' : 'Delivered';
+            if (
+                !$statusNames->contains('Payment Confirmed') ||
+                !$statusNames->contains($releaseStatus)
+            ) {
+                throw new Exception("Seller order must be payment confirmed and {$releaseStatus} before release.", 422);
             }
 
             $payout = $this->calculateSellerOrderPayout($sellerOrder);
@@ -563,6 +629,130 @@ class OrderService
         }
     }
 
+    private function validateSellerOrderStatusTransition(SellerOrder $sellerOrder, string $requestedStatus): void
+    {
+        $latestStatus = $this->latestSellerOrderStatusName($sellerOrder);
+        $isHireOrder = $this->isHireSellerOrder($sellerOrder);
+        $isSeller = (int) Auth::id() === (int) $sellerOrder->seller_id;
+        $isBuyer = (int) Auth::id() === (int) $sellerOrder->order->user_id;
+
+        if (!$isSeller && !$isBuyer) {
+            throw new Exception('You cannot update this seller order.', 403);
+        }
+
+        if ($sellerOrder->statuses->contains('name', $requestedStatus)) {
+            return;
+        }
+
+        if ($requestedStatus === 'Cancelled') {
+            if (!$isSeller && !$isBuyer) {
+                throw new Exception('Only the buyer or seller can cancel this order.', 403);
+            }
+
+            if ($sellerOrder->statuses->contains('name', 'Shipped')) {
+                throw new Exception('Orders can only be cancelled before they are shipped.', 422);
+            }
+
+            return;
+        }
+
+        if ($requestedStatus === 'Dispute') {
+            if (!$isSeller && !$isBuyer) {
+                throw new Exception('Only the buyer or seller can dispute this order.', 403);
+            }
+
+            if (!in_array($latestStatus, ['Shipped', 'Delivered', 'Returned in Transit', 'Overdue'], true)) {
+                throw new Exception('This order cannot be disputed from its current status.', 422);
+            }
+
+            return;
+        }
+
+        $sellerTransitions = [
+            'Shipped' => ['Order Confirmed', 'Payment Confirmed'],
+            'Dispute Resolved' => ['Dispute'],
+            'Completed' => $isHireOrder
+                ? ['Returned in Transit', 'Overdue', 'Dispute Resolved']
+                : ['Delivered', 'Dispute Resolved'],
+        ];
+
+        $buyerTransitions = [
+            'Delivered' => ['Shipped'],
+            'Returned in Transit' => ['Delivered', 'Overdue'],
+        ];
+
+        if (isset($sellerTransitions[$requestedStatus])) {
+            if (!$isSeller) {
+                throw new Exception('Only the seller can set this status.', 403);
+            }
+
+            if (!in_array($latestStatus, $sellerTransitions[$requestedStatus], true)) {
+                throw new Exception("Cannot change status from {$latestStatus} to {$requestedStatus}.", 422);
+            }
+
+            return;
+        }
+
+        if (isset($buyerTransitions[$requestedStatus])) {
+            if (!$isBuyer) {
+                throw new Exception('Only the buyer can set this status.', 403);
+            }
+
+            if (!$isHireOrder && $requestedStatus === 'Returned in Transit') {
+                throw new Exception('Only hire orders can be returned in transit.', 422);
+            }
+
+            if (!in_array($latestStatus, $buyerTransitions[$requestedStatus], true)) {
+                throw new Exception("Cannot change status from {$latestStatus} to {$requestedStatus}.", 422);
+            }
+
+            return;
+        }
+
+        throw new Exception('This status is managed automatically and cannot be set manually.', 422);
+    }
+
+    private function latestSellerOrderStatusName(SellerOrder $sellerOrder): string
+    {
+        $latestStatus = $sellerOrder->statuses
+            ->sortByDesc(fn ($status) => $status->pivot?->created_at)
+            ->first();
+
+        return $latestStatus?->name ?? 'Pending';
+    }
+
+    private function isHireSellerOrder(SellerOrder $sellerOrder): bool
+    {
+        return $sellerOrder->orderItems->contains(function ($orderItem) {
+            return $orderItem->hiringDetail !== null;
+        });
+    }
+
+    private function refundCancelledSellerOrder(SellerOrder $sellerOrder): void
+    {
+        if ($sellerOrder->order?->stripeIntent?->status !== 'succeeded') {
+            return;
+        }
+
+        $refundAmount = (int) round($sellerOrder->amount * 100) + $this->heldDepositAmountInPence($sellerOrder);
+
+        if ($refundAmount <= 0) {
+            return;
+        }
+
+        Refund::create([
+            'payment_intent' => $sellerOrder->order->stripeIntent->payment_intent_id,
+            'amount' => $refundAmount,
+            'metadata' => [
+                'seller_order_id' => $sellerOrder->id,
+                'order_id' => $sellerOrder->order_id,
+                'reason' => 'seller_order_cancelled',
+            ],
+        ]);
+
+        $this->updateDepositStatus($sellerOrder, 'released');
+    }
+
     public function releaseSellerOrderDeposit($sellerOrderId)
     {
         DB::beginTransaction();
@@ -570,8 +760,8 @@ class OrderService
         try {
             $sellerOrder = $this->depositSellerOrderQuery($sellerOrderId);
 
-            if ((int) $sellerOrder->order->user_id !== (int) Auth::id()) {
-                throw new Exception('Only the buyer can release a deposit.', 403);
+            if (!in_array((int) Auth::id(), [(int) $sellerOrder->seller_id, (int) $sellerOrder->order->user_id], true)) {
+                throw new Exception('Only the buyer or seller can release a deposit.', 403);
             }
 
             $depositAmount = $this->heldDepositAmountInPence($sellerOrder);

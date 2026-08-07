@@ -21,6 +21,9 @@ class OrderStatusSeeder extends Seeder
             ['name' => 'Payment Confirmed'],
             ['name' => 'Shipped'],
             ['name' => 'Delivered'],
+            ['name' => 'Returned in Transit'],
+            ['name' => 'Completed'],
+            ['name' => 'Overdue'],
             ['name' => 'Cancelled'],
             ['name' => 'Dispute'],
             ['name' => 'Dispute Resolved'],
@@ -28,7 +31,7 @@ class OrderStatusSeeder extends Seeder
         ];
 
         foreach ($statuses as $status) {
-            OrderStatus::create($status);
+            OrderStatus::firstOrCreate(['name' => $status['name']], $status);
         }
     }
 }
