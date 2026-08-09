@@ -122,6 +122,16 @@ class OrderController extends Controller
         }
     }
 
+    public function syncStripePayment($id)
+    {
+        try {
+            $order = $this->orderService->syncStripePayment($id);
+            return apiResponse(true, $order, "Payment status synced successfully");
+        } catch (Exception $ex) {
+            return apiResponse(false, $ex->getMessage(), $ex->getMessage() ?? 'Something went wrong', $ex->getCode() ?? 1, $ex->getCode() ?: 500);
+        }
+    }
+
     public function addStatusToSellerOrder(Request $request, $sellerOrderId)
     {
         try {

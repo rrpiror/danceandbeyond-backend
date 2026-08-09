@@ -23,6 +23,8 @@ use App\Models\StripeIntent;
 use App\Models\Product;
 use App\Models\SellerOrder;
 use App\Models\Order;
+use App\Models\OrderTransaction;
+use App\Models\Transaction;
 use App\Models\UnavailabilityDuration;
 use App\Http\Resources\OrderResource;
 use Stripe\BalanceTransaction;
@@ -449,6 +451,73 @@ class OrderService
     public function getAllOrderStatuses()
     {
         return $this->orderStatusRepository->getAll();
+    }
+
+    public function syncStripePayment($orderId)
+    {
+        $order = Order::with(['stripeIntent', 'sellerOrders.statuses'])
+            ->where('id', $orderId)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$order) {
+            throw new Exception('Order not found.', 404);
+        }
+
+        $paymentIntentId = $order->stripeIntent?->payment_intent_id;
+
+        if (!$paymentIntentId) {
+            throw new Exception('Stripe payment intent is missing for this order.', 422);
+        }
+
+        $paymentIntent = PaymentIntent::retrieve($paymentIntentId);
+
+        if ($order->stripeIntent) {
+            $order->stripeIntent->update(['status' => $paymentIntent->status]);
+        }
+
+        if ($paymentIntent->status === 'succeeded') {
+            $transaction = Transaction::firstOrCreate(
+                ['stripe_payment_id' => $paymentIntent->id],
+                [
+                    'type' => 'order',
+                    'amount' => $paymentIntent->amount / 100,
+                ]
+            );
+
+            OrderTransaction::firstOrCreate([
+                'transaction_id' => $transaction->id,
+                'order_id' => $order->id,
+                'user_id' => $order->user_id,
+            ]);
+
+            $paymentConfirmedStatus = $this->orderStatusRepository->findById(env('ORDER_STATUS_PAYMENT_CONFIRMED_ID'))
+                ?? $this->orderStatusRepository->getStatusByName('Payment Confirmed');
+            $orderConfirmedStatus = $this->orderStatusRepository->getStatusByName('Order Confirmed');
+
+            foreach ($order->sellerOrders as $sellerOrder) {
+                if ($paymentConfirmedStatus && !$sellerOrder->statuses()->where('order_status_id', $paymentConfirmedStatus->id)->exists()) {
+                    $sellerOrder->statuses()->attach($paymentConfirmedStatus->id);
+                }
+
+                if ($orderConfirmedStatus && !$sellerOrder->statuses()->where('order_status_id', $orderConfirmedStatus->id)->exists()) {
+                    $sellerOrder->statuses()->attach($orderConfirmedStatus->id);
+                }
+            }
+        }
+
+        if ($paymentIntent->status === 'payment_failed') {
+            $paymentFailedStatus = $this->orderStatusRepository->findById(env('ORDER_STATUS_PAYMENT_FAILED_ID'))
+                ?? $this->orderStatusRepository->getStatusByName('Payment Failed');
+
+            foreach ($order->sellerOrders as $sellerOrder) {
+                if ($paymentFailedStatus && !$sellerOrder->statuses()->where('order_status_id', $paymentFailedStatus->id)->exists()) {
+                    $sellerOrder->statuses()->attach($paymentFailedStatus->id);
+                }
+            }
+        }
+
+        return $this->findById($order->id);
     }
 
     /**

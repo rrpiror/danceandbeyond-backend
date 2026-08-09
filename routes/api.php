@@ -74,6 +74,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/seller/orders/{id}/deposit/dispute', [OrderController::class, 'disputeSellerOrderDeposit']);
     
     // Order management (authenticated)
+    Route::post('/orders/{id}/sync-payment', [OrderController::class, 'syncStripePayment']);
     Route::apiResource('/orders', OrderController::class);
     
     // Product management (authenticated)
