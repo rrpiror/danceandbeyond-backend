@@ -12,11 +12,13 @@ class SellerOrderRepository
 
     public $detailedRelations = [
         'orderItems',
+        'orderItems.hiringDetail',
         'orderItems.variant.size',
         'orderItems.variant.colour',
         'order',
-        'order.user:id,name,email',
-        'seller:id,name,email',
+        'order.stripeIntent',
+        'order.user:id,name,email,phone_number',
+        'seller:id,name,email,phone_number',
         'statuses',
     ];
 
