@@ -13,16 +13,22 @@ class ProductController extends Controller
     protected ProductService $productService;
     protected ValidationService $validationService;
     private const CREATE_RULES = [
-        'category_id' => 'required',
-        'condition_id' => 'required',
-        'brand_id' => 'required',
-        'name' => 'required',
-        'description' => 'required',
-        'price' => 'required',
+        'category_id' => 'required|integer|exists:categories,id',
+        'condition_id' => 'required|integer|exists:conditions,id',
+        'brand_id' => 'required|integer|exists:brands,id',
+        'name' => 'required|string',
+        'description' => 'required|string',
+        'price' => 'required|numeric|min:0',
         'delivery_charge' => 'nullable|numeric|min:0',
-        'type' => 'required',
-        'fulfillment_option_ids' => 'required',
-        'variants' => 'required'
+        'type' => 'required|in:sale,hire',
+        'fulfillment_option_ids' => 'required|array|min:1',
+        'fulfillment_option_ids.*' => 'integer|exists:fulfillment_options,id',
+        'variants' => 'required|array|min:1',
+        'variants.*.colour_id' => 'nullable|integer|exists:product_colours,id',
+        'variants.*.size_id' => 'nullable|integer|exists:product_sizes,id',
+        'variants.*.quantity' => 'required|integer|min:1',
+        'images' => 'nullable|array',
+        'images.*' => 'string',
     ];
 
     public function __construct(ProductService $productService, ValidationService $validationService)
@@ -92,6 +98,12 @@ class ProductController extends Controller
 
             if ($request->type == 'hire') {
                 $rules['hiring_details'] = 'required';
+                $rules['hiring_details.min_hire_days'] = 'required|integer|min:1';
+                $rules['hiring_details.additional_fee_per_day'] = 'required|numeric|min:0';
+                $rules['hiring_details.deposit_amount'] = 'nullable|numeric|min:0';
+                $rules['unavailability_durations'] = 'nullable|array';
+                $rules['unavailability_durations.*.start_date'] = 'required|date';
+                $rules['unavailability_durations.*.end_date'] = 'required|date';
             }
 
             $validation = $this->validationService->validate($request, $rules);
@@ -121,6 +133,12 @@ class ProductController extends Controller
 
             if ($request->type == 'hire') {
                 $rules['hiring_details'] = 'required';
+                $rules['hiring_details.min_hire_days'] = 'required|integer|min:1';
+                $rules['hiring_details.additional_fee_per_day'] = 'required|numeric|min:0';
+                $rules['hiring_details.deposit_amount'] = 'nullable|numeric|min:0';
+                $rules['unavailability_durations'] = 'nullable|array';
+                $rules['unavailability_durations.*.start_date'] = 'required|date';
+                $rules['unavailability_durations.*.end_date'] = 'required|date';
             }
 
             $validation = $this->validationService->validate($request, $rules);

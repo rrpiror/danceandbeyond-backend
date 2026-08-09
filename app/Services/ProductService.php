@@ -198,8 +198,8 @@ class ProductService
 
             $product->fill($data)->save();
 
-            if (isset($data['fulfillment_options'])) {
-                $product->fulfillmentOptions()->sync($data['fulfillment_options']);
+            if (isset($data['fulfillment_option_ids'])) {
+                $product->fulfillmentOptions()->sync($data['fulfillment_option_ids']);
             }
 
             // Handle variants - delete existing and create new ones
