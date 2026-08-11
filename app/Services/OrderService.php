@@ -144,9 +144,21 @@ class OrderService
             $productIds = collect($data['items'])->pluck('product_id')->toArray();
             $products = $this->productRepository->findByIds($productIds)->keyBy('id');
 
-            // Store billing and shipping addresses
-            $billingAddress = $this->addressRepository->findById($data['billing_address_id']);
-            $shippingAddress = $this->addressRepository->findById($data['shipping_address_id']);
+            // Store billing and shipping addresses. Checkout can either send
+            // saved address IDs or inline address data for users with no saved
+            // addresses yet.
+            $billingAddress = $this->resolveCheckoutAddress(
+                $data,
+                'billing',
+                $userId,
+                (bool) ($data['save_billing_address'] ?? false)
+            );
+            $shippingAddress = $this->resolveCheckoutAddress(
+                $data,
+                'shipping',
+                $userId,
+                (bool) ($data['save_shipping_address'] ?? false)
+            );
             $addresses = [];
             if ($billingAddress) {
                 $addresses['billing'] = $billingAddress;
@@ -155,6 +167,14 @@ class OrderService
                 $addresses['shipping'] = $shippingAddress;
             }
             $data['addresses'] = json_encode($addresses);
+            unset(
+                $data['billing_address_id'],
+                $data['shipping_address_id'],
+                $data['billing_address'],
+                $data['shipping_address'],
+                $data['save_billing_address'],
+                $data['save_shipping_address']
+            );
 
             $data['items'] = collect($data['items'])->map(function ($item) use ($products) {
                 $product = $products[$item['product_id']];
@@ -262,6 +282,39 @@ class OrderService
             DB::rollBack();
             throw new Exception($ex->getMessage(), 422);
         }
+    }
+
+    private function resolveCheckoutAddress(array $data, string $type, int $userId, bool $saveToProfile)
+    {
+        $addressIdKey = "{$type}_address_id";
+        $addressKey = "{$type}_address";
+
+        if (!empty($data[$addressIdKey])) {
+            return $this->addressRepository->findById($data[$addressIdKey]);
+        }
+
+        if (empty($data[$addressKey]) || !is_array($data[$addressKey])) {
+            throw new Exception(ucfirst($type) . ' address is required.', 422);
+        }
+
+        $address = $this->addressRepository->create([
+            'house_number' => $data[$addressKey]['house_number'],
+            'building_name' => $data[$addressKey]['building_name'] ?? null,
+            'street' => $data[$addressKey]['street'],
+            'town' => $data[$addressKey]['town'] ?? null,
+            'city' => $data[$addressKey]['city'],
+            'postcode' => $data[$addressKey]['postcode'],
+        ]);
+
+        if ($saveToProfile) {
+            $this->userAddressRepository->create([
+                'user_id' => $userId,
+                'address_id' => $address->id,
+                'type' => $type,
+            ]);
+        }
+
+        return $address;
     }
 
     /**
