@@ -23,15 +23,15 @@ class ProductVariantSeeder extends Seeder
 
         foreach ($products as $product) {
             // Each product gets 2-5 variants (colour/size combinations)
-            $numVariants = rand(2, 5);
+            $numVariants = random_int(2, 5);
             $usedCombinations = [];
 
             for ($i = 0; $i < $numVariants; $i++) {
                 // Get a random colour and size combination that hasn't been used
                 $attempts = 0;
                 do {
-                    $colourId = $colours[rand(0, $colourCount - 1)]->id;
-                    $sizeId = $sizes[rand(0, $sizeCount - 1)]->id;
+                    $colourId = $colours[random_int(0, $colourCount - 1)]->id;
+                    $sizeId = $sizes[random_int(0, $sizeCount - 1)]->id;
                     $combination = "{$colourId}-{$sizeId}";
                     $attempts++;
                 } while (in_array($combination, $usedCombinations) && $attempts < 20);
@@ -46,7 +46,7 @@ class ProductVariantSeeder extends Seeder
                     'product_id' => $product->id,
                     'colour_id' => $colourId,
                     'size_id' => $sizeId,
-                    'quantity' => rand(1, 10),
+                    'quantity' => random_int(1, 10),
                 ]);
             }
         }

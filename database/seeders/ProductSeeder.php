@@ -58,12 +58,12 @@ class ProductSeeder extends Seeder
             $brand = $brands->random();
             $category = $categories->random();
             $condition = $conditions->random();
-            $productName = $productNames[array_rand($productNames)];
-            $description = $descriptions[array_rand($descriptions)];
+            $productName = $productNames[random_int(0, count($productNames) - 1)];
+            $description = $descriptions[random_int(0, count($descriptions) - 1)];
             
-            $price = rand(1000, 20000) / 100; // Random price between 10 and 200
-            $type = rand(0, 1) === 0 ? 'sale' : 'hire';
-            $isFeatured = rand(0, 10) === 0; // 10% chance of being featured
+            $price = random_int(1000, 20000) / 100; // Random price between 10 and 200
+            $type = random_int(0, 1) === 0 ? 'sale' : 'hire';
+            $isFeatured = random_int(0, 10) === 0; // 10% chance of being featured
             
             $product =Product::create([
                 'user_id' => $user->id,
@@ -95,17 +95,17 @@ class ProductSeeder extends Seeder
 
             //add 3 random images to the product from unsplash
             for ($j = 0; $j < 3; $j++) {
-                $product->addMediaFromUrl($unsplashImages[array_rand($unsplashImages)])
+                $product->addMediaFromUrl($unsplashImages[random_int(0, count($unsplashImages) - 1)])
                     ->usingFileName(uniqid() . '.jpg')
                     ->toMediaCollection('images');
             }
 
             // Add unavailability durations for some products (30% chance)
-            if (rand(0, 9) < 3) {
-                $numDurations = rand(1, 3); // 1 to 3 unavailability durations
+            if (random_int(0, 9) < 3) {
+                $numDurations = random_int(1, 3); // 1 to 3 unavailability durations
                 for ($k = 0; $k < $numDurations; $k++) {
-                    $startDate = now()->addDays(rand(1, 60));
-                    $endDate = $startDate->copy()->addDays(rand(1, 14));
+                    $startDate = now()->addDays(random_int(1, 60));
+                    $endDate = $startDate->copy()->addDays(random_int(1, 14));
                     
                     $product->unavailabilityDurations()->create([
                         'start_date' => $startDate->format('Y-m-d'),

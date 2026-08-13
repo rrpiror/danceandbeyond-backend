@@ -32,9 +32,9 @@ class UserReviewSeeder extends Seeder
         // Create 20 reviews
         for ($i = 0; $i < 20; $i++) {
             // Get two random users for the review
-            $userIndex = rand(0, $userCount - 1);
+            $userIndex = random_int(0, $userCount - 1);
             do {
-                $sellerIndex = rand(0, $userCount - 1);
+                $sellerIndex = random_int(0, $userCount - 1);
             } while ($userIndex === $sellerIndex);
             
             $user = $users[$userIndex];
@@ -46,11 +46,11 @@ class UserReviewSeeder extends Seeder
                 ->exists();
             
             if (!$exists) {
-                $rating = rand(3, 5); // Mostly positive ratings (3-5 stars)
-                $description = $reviewComments[array_rand($reviewComments)];
+                $rating = random_int(3, 5); // Mostly positive ratings (3-5 stars)
+                $description = $reviewComments[random_int(0, count($reviewComments) - 1)];
                 
                 // Random date within the last 30 days
-                $date = now()->subDays(rand(0, 30));
+                $date = now()->subDays(random_int(0, 30));
                 
                 UserReview::create([
                     'user_id' => $user->id,

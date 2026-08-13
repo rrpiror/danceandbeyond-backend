@@ -61,10 +61,10 @@ class NotificationSeeder extends Seeder
         // Create 30 notifications
         for ($i = 0; $i < 30; $i++) {
             $user = $users->random();
-            $notification = $notifications[array_rand($notifications)];
+            $notification = $notifications[random_int(0, count($notifications) - 1)];
             
             // Random date within the last 7 days
-            $date = now()->subDays(rand(0, 7))->subHours(rand(0, 23));
+            $date = now()->subDays(random_int(0, 7))->subHours(random_int(0, 23));
             
             Notification::create([
                 'user_id' => $user->id,

@@ -35,24 +35,24 @@ class ChatMessageSeeder extends Seeder
         
         foreach ($chats as $chat) {
             // Add 3-10 messages to each chat
-            $numMessages = rand(3, 10);
-            $lastMessageTime = now()->subDays(rand(1, 7));
+            $numMessages = random_int(3, 10);
+            $lastMessageTime = now()->subDays(random_int(1, 7));
             
             for ($i = 0; $i < $numMessages; $i++) {
                 // Randomly decide if the buyer or seller is sending the message
-                $isBuyerSending = rand(0, 1) === 0;
+                $isBuyerSending = random_int(0, 1) === 0;
                 $sender_id = $isBuyerSending ? $chat->buyer_id : $chat->seller_id;
                 $receiver_id = $isBuyerSending ? $chat->seller_id : $chat->buyer_id;
                 
-                $message = $messages[array_rand($messages)];
-                $messageTime = $lastMessageTime->copy()->addMinutes(rand(1, 60));
+                $message = $messages[random_int(0, count($messages) - 1)];
+                $messageTime = $lastMessageTime->copy()->addMinutes(random_int(1, 60));
                 
                 ChatMessage::create([
                     'chat_id' => $chat->id,
                     'sender_id' => $sender_id,
                     'receiver_id' => $receiver_id,
                     'message' => $message,
-                    'is_read' => rand(0, 1),
+                    'is_read' => random_int(0, 1),
                     'created_at' => $messageTime,
                     'updated_at' => $messageTime,
                 ]);

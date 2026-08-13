@@ -20,13 +20,13 @@ class ProductFulfillmentOptionSeeder extends Seeder
 
         foreach ($products as $product) {
             // Each product gets 1-3 fulfillment options
-            $numOptions = rand(1, 2);
+            $numOptions = random_int(1, 2);
             $usedOptionIds = [];
 
             for ($i = 0; $i < $numOptions; $i++) {
                 // Get a random option that hasn't been used for this product yet
                 do {
-                    $optionId = $fulfillmentOptions[rand(0, $optionCount - 1)]->id;
+                    $optionId = $fulfillmentOptions[random_int(0, $optionCount - 1)]->id;
                 } while (in_array($optionId, $usedOptionIds));
 
                 $usedOptionIds[] = $optionId;

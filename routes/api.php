@@ -10,18 +10,11 @@ use App\Http\Controllers\{
     ProductController,
     SizeController,
     UserController,
-    SeederController,
     StripeWebHookController,
     ShippingServiceProviderController,
     ColourController
 };
 use Illuminate\Support\Facades\Route;
-//for testing purposes
-Route::post('/seed', [SeederController::class, 'seed']);
-Route::get('/info-test-786', function () {
-    phpinfo();
-});
-
 // Authentication endpoints
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/signup', [UserController::class, 'signup']);

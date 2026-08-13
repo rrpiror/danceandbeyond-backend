@@ -19,9 +19,9 @@ class ChatSeeder extends Seeder
         // Create 10 chat conversations
         for ($i = 0; $i < 10; $i++) {
             // Get two random users for the chat
-            $userIndex1 = rand(0, $userCount - 1);
+            $userIndex1 = random_int(0, $userCount - 1);
             do {
-                $userIndex2 = rand(0, $userCount - 1);
+                $userIndex2 = random_int(0, $userCount - 1);
             } while ($userIndex1 === $userIndex2);
             
             $buyer = $users[$userIndex1];

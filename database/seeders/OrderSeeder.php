@@ -46,7 +46,7 @@ class OrderSeeder extends Seeder
             $paymentMethod = $paymentMethods->random();
             
             // Random date within the last 30 days
-            $date = now()->subDays(rand(0, 30));
+            $date = now()->subDays(random_int(0, 30));
             
             // Create JSON for addresses
             $addressesJson = json_encode([
@@ -100,7 +100,7 @@ class OrderSeeder extends Seeder
     private function createOrderItems($order, $products, $orderStatuses)
     {
         // Each order gets 1-3 items
-        $numItems = rand(1, 3);
+        $numItems = random_int(1, 3);
         $usedProductIds = [];
         $sellerOrders = [];
         $totalOrderAmount = 0;
@@ -120,12 +120,12 @@ class OrderSeeder extends Seeder
                     'order_id' => $order->id,
                     'seller_id' => $sellerId,
                     'amount' => 0,
-                    'transferred_at' => rand(0, 1) ? now()->subDays(rand(1, 30)) : null,
+                    'transferred_at' => random_int(0, 1) ? now()->subDays(random_int(1, 30)) : null,
                 ]);
 
                 // Attach random order statuses to seller order
                 if ($orderStatuses->isNotEmpty()) {
-                    $randomStatuses = $orderStatuses->random(rand(1, 3));
+                    $randomStatuses = $orderStatuses->random(random_int(1, 3));
                     $sellerOrders[$sellerId]->statuses()->attach($randomStatuses->pluck('id'));
                 }
             }
@@ -133,7 +133,7 @@ class OrderSeeder extends Seeder
             $sellerOrder = $sellerOrders[$sellerId];
 
             $isHire = $product->type === 'hire';
-            $quantity = rand(1, 6); // Quantity for both hire and sale products
+            $quantity = random_int(1, 6); // Quantity for both hire and sale products
             $hiringDays = null;
 
             $item = [

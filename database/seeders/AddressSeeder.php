@@ -16,7 +16,7 @@ class AddressSeeder extends Seeder
         $postcodes = ['SW1A 1AA', 'M1 1AA', 'B1 1AA', 'L1 1AA', 'LS1 1AA', 'G1 1AA', 'EH1 1AA', 'BS1 1AA', 'CF10 1AA', 'BT1 1AA'];
         
         for ($i = 1; $i <= 30; $i++) {
-            $cityIndex = array_rand($cities);
+            $cityIndex = random_int(0, count($cities) - 1);
             
             Address::create([
                 'house_number' => $i,

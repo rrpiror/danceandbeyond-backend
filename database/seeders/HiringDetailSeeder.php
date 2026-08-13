@@ -17,8 +17,8 @@ class HiringDetailSeeder extends Seeder
         $hireProducts = Product::where('type', 'hire')->get();
         
         foreach ($hireProducts as $product) {
-            $additionalFeePerDay = rand(500, 2000) / 100; // Random fee between 5 and 20
-            $minHireDays = rand(1, 3);
+            $additionalFeePerDay = random_int(500, 2000) / 100; // Random fee between 5 and 20
+            $minHireDays = random_int(1, 3);
             
             HiringDetail::create([
                 'product_id' => $product->id,

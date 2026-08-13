@@ -20,7 +20,7 @@ class ChatBlockSeeder extends Seeder
         
         foreach ($blockedChats as $chat) {
             // Randomly decide which user blocked the chat
-            $blockingUser = rand(0, 1) === 0 ? $chat->buyer_id : $chat->seller_id;
+            $blockingUser = random_int(0, 1) === 0 ? $chat->buyer_id : $chat->seller_id;
             
             ChatBlock::create([
                 'user_id' => $blockingUser,

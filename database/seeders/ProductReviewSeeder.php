@@ -26,9 +26,9 @@ class ProductReviewSeeder extends Seeder
         // Create 50 random product reviews
         for ($i = 0; $i < 50; $i++) {
             ProductReview::create([
-                'user_id' => fake()->randomElement($userIds),
-                'product_id' => fake()->randomElement($productIds),
-                'rating' => fake()->randomFloat(1, 1, 5),
+                'user_id' => $userIds[random_int(0, count($userIds) - 1)],
+                'product_id' => $productIds[random_int(0, count($productIds) - 1)],
+                'rating' => random_int(10, 50) / 10,
                 'description' => fake()->realText(200),
             ]);
         }

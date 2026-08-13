@@ -23,7 +23,7 @@ class UserAddressSeeder extends Seeder
             // Each user gets 2 addresses 1 shipping and 1 billing
             
             for ($i = 0; $i < 2; $i++) {
-                $addressId = $addresses[rand(0, $addressCount - 1)]->id;
+                $addressId = $addresses[random_int(0, $addressCount - 1)]->id;
                 $type = $types[$i];
                 
                 // Check if this user-address combination already exists
