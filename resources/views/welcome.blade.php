@@ -36,25 +36,29 @@
     .button-primary:hover { background: var(--green-strong); }
     .button-secondary { border-color: rgba(255, 255, 255, .18); color: #fff; background: rgba(255, 255, 255, .06); }
 
-    .hero { min-height: 100vh; padding: 128px 0 78px; position: relative; display: grid; align-items: center; }
-    .hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(7, 11, 12, .94) 0%, rgba(7, 11, 12, .78) 40%, rgba(7, 11, 12, .28) 100%), linear-gradient(0deg, #070b0c 0%, transparent 34%); z-index: 1; }
-    .hero-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .9; }
-    .hero-content { position: relative; z-index: 2; display: grid; grid-template-columns: 1.04fr .96fr; align-items: center; gap: 48px; }
-    .eyebrow { color: var(--green-strong); font-weight: 800; font-size: 13px; letter-spacing: .22em; text-transform: uppercase; }
-    .hero-title { margin: 18px 0 0; font-size: clamp(58px, 12vw, 154px); line-height: .78; letter-spacing: -.06em; font-weight: 950; text-transform: uppercase; text-shadow: 0 18px 70px rgba(64, 147, 73, .18); }
-    .hero-title span { display: block; color: transparent; -webkit-text-stroke: 1px rgba(255,255,255,.72); opacity: .72; }
-    .hero-copy { max-width: 560px; margin: 26px 0 0; color: #d8ded6; font-size: clamp(18px, 2vw, 23px); line-height: 1.45; }
+    .hero { min-height: 100vh; padding: 118px 0 72px; position: relative; display: grid; align-items: center; isolation: isolate; background: radial-gradient(circle at 50% 20%, rgba(64, 147, 73, .48), transparent 26rem), linear-gradient(180deg, #0e2012 0%, #070b0c 78%); }
+    .hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(7, 11, 12, .1) 0%, rgba(7, 11, 12, .36) 48%, #070b0c 100%); z-index: -1; }
+    .hero-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .22; filter: saturate(.95) contrast(1.12); z-index: -2; }
+    .hero-stage { position: relative; min-height: 640px; display: grid; place-items: center; text-align: center; }
+    .hero-kicker { position: absolute; top: 0; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.82); font-size: 14px; letter-spacing: .18em; text-transform: uppercase; white-space: nowrap; }
+    .hero-side-copy { position: absolute; left: 0; top: 245px; max-width: 260px; text-align: left; color: #e8eee6; font-size: clamp(18px, 2.1vw, 24px); line-height: 1.28; font-weight: 700; }
+    .hero-title { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); margin: 0; font-size: clamp(82px, 19vw, 238px); line-height: .8; letter-spacing: -.08em; font-weight: 950; text-transform: uppercase; color: rgba(64, 147, 73, .98); text-shadow: 0 12px 28px rgba(0,0,0,.38), 0 0 64px rgba(81, 179, 93, .46); }
+    .hero-title::after { content: "VESTU"; position: absolute; inset: 0; color: transparent; -webkit-text-stroke: 1px rgba(255,255,255,.12); transform: translateY(18px); filter: blur(.2px); }
+    .hero-copy { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); max-width: 640px; margin: 0; color: #d8ded6; font-size: clamp(17px, 2vw, 22px); line-height: 1.45; }
     .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; }
-    .hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 42px; max-width: 620px; }
-    .stat { border: 1px solid var(--line); background: rgba(255,255,255,.06); padding: 18px; border-radius: 18px; }
-    .stat strong { display: block; font-size: 28px; color: #fff; line-height: 1; }
-    .stat span { display: block; color: var(--muted); margin-top: 8px; font-size: 13px; }
-    .phone-card { justify-self: center; width: min(330px, 82vw); aspect-ratio: 9 / 18.5; border-radius: 44px; padding: 14px; background: linear-gradient(145deg, #242b2d, #050707); box-shadow: 0 30px 100px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.16); transform: rotate(4deg); }
+    .hero-actions.hero-actions-centered { position: absolute; bottom: 86px; left: 50%; transform: translateX(-50%); justify-content: center; margin: 0; }
+    .phone-card { position: relative; z-index: 3; width: min(280px, 62vw); aspect-ratio: 9 / 18.5; border-radius: 42px; padding: 13px; background: linear-gradient(145deg, #242b2d, #050707); box-shadow: 0 30px 100px rgba(0,0,0,.68), 0 0 0 1px rgba(255,255,255,.18); transform: translateY(42px); }
     .phone-screen { height: 100%; border-radius: 34px; background: radial-gradient(circle at 50% 12%, rgba(64,147,73,.6), transparent 32%), linear-gradient(180deg, #111718, #061008); border: 1px solid rgba(255,255,255,.13); overflow: hidden; position: relative; padding: 28px 24px; display: flex; flex-direction: column; justify-content: space-between; }
     .phone-screen::before { content: ""; position: absolute; top: 12px; left: 50%; width: 92px; height: 24px; border-radius: 999px; background: #020303; transform: translateX(-50%); }
     .phone-logo { margin-top: 54px; font-size: 32px; font-weight: 950; letter-spacing: -.05em; }
     .phone-tabs { display: grid; gap: 12px; }
     .phone-tab { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-radius: 18px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1); color: #dce6da; }
+    .silhouettes { position: absolute; left: 50%; bottom: 118px; width: min(980px, 100%); transform: translateX(-50%); display: flex; justify-content: space-between; align-items: end; opacity: .62; z-index: 2; pointer-events: none; }
+    .silhouette { position: relative; width: 52px; height: 112px; filter: drop-shadow(0 18px 18px rgba(0,0,0,.52)); }
+    .silhouette::before { content: ""; position: absolute; left: 18px; top: 8px; width: 18px; height: 18px; border-radius: 999px; background: #020403; }
+    .silhouette::after { content: ""; position: absolute; left: 20px; top: 28px; width: 15px; height: 44px; border-radius: 999px 999px 10px 10px; background: #020403; transform: rotate(var(--tilt, 0deg)); transform-origin: top center; box-shadow: -25px 14px 0 -5px #020403, 25px 12px 0 -5px #020403, -14px 62px 0 -5px #020403, 18px 63px 0 -5px #020403; }
+    .silhouette:nth-child(2n) { --tilt: -12deg; transform: translateY(-18px) rotate(-8deg); }
+    .silhouette:nth-child(3n) { --tilt: 14deg; transform: translateY(8px) rotate(10deg); }
 
     .section { padding: 92px 0; position: relative; }
     .section-tight { padding-top: 52px; }
@@ -107,8 +111,10 @@
 
     @media (max-width: 920px) {
         .nav-links { display: none; }
-        .hero-content, .showcase, .split { grid-template-columns: 1fr; }
-        .phone-card { display: none; }
+        .showcase, .split { grid-template-columns: 1fr; }
+        .hero-stage { min-height: 630px; }
+        .hero-side-copy { display: none; }
+        .silhouettes { opacity: .36; }
         .feature-grid, .trust-grid { grid-template-columns: 1fr; }
         .steps { grid-template-columns: repeat(2, 1fr); }
     }
@@ -116,11 +122,16 @@
     @media (max-width: 620px) {
         .container { width: min(100% - 28px, 1120px); }
         .hero { padding-top: 112px; min-height: 92vh; }
-        .hero-stats, .steps { grid-template-columns: 1fr; }
+        .hero-stage { min-height: 580px; }
+        .hero-title { top: 78px; font-size: clamp(72px, 24vw, 118px); }
+        .phone-card { width: min(232px, 68vw); transform: translateY(28px); }
+        .silhouettes { bottom: 128px; }
+        .steps { grid-template-columns: 1fr; }
         .section-head { display: block; }
         .section { padding: 68px 0; }
         .button { width: 100%; }
         .hero-actions { width: 100%; }
+        .hero-actions.hero-actions-centered { width: calc(100% - 28px); }
         .showcase-image { min-height: 300px; }
     }
 </style>
@@ -146,21 +157,10 @@
 
     <section class="hero">
         <img class="hero-bg" src="{{ asset('landing/vestu-hero.png') }}" alt="Young dancers in a studio wearing dance clothing" loading="eager" fetchpriority="high">
-        <div class="container hero-content">
-            <div>
-                <div class="eyebrow">Buy · Sell · Hire</div>
-                <h1 class="hero-title">Vestu <span>Dancewear</span></h1>
-                <p class="hero-copy">A marketplace built for dancers and dance parents to buy, sell and hire pre-loved costumes, shoes, accessories and class wear.</p>
-                <div class="hero-actions">
-                    <a class="button button-primary" href="#download">Get Vestu</a>
-                    <a class="button button-secondary" href="#marketplace">Explore the marketplace</a>
-                </div>
-                <div class="hero-stats" aria-label="Vestu benefits">
-                    <div class="stat"><strong>3</strong><span>ways to use every item</span></div>
-                    <div class="stat"><strong>8%</strong><span>platform fee on seller orders</span></div>
-                    <div class="stat"><strong>1</strong><span>dancewear community</span></div>
-                </div>
-            </div>
+        <div class="container hero-stage">
+            <div class="hero-kicker">All-in-one dancewear marketplace</div>
+            <h1 class="hero-title">VESTU</h1>
+            <p class="hero-side-copy">Buy, sell and hire pre-loved dance clothing.</p>
             <div class="phone-card" aria-hidden="true">
                 <div class="phone-screen">
                     <div>
@@ -174,6 +174,20 @@
                     </div>
                 </div>
             </div>
+            <div class="silhouettes" aria-hidden="true">
+                <span class="silhouette"></span>
+                <span class="silhouette"></span>
+                <span class="silhouette"></span>
+                <span class="silhouette"></span>
+                <span class="silhouette"></span>
+                <span class="silhouette"></span>
+                <span class="silhouette"></span>
+            </div>
+            <div class="hero-actions hero-actions-centered">
+                <a class="button button-primary" href="#download">Get Vestu</a>
+                <a class="button button-secondary" href="#marketplace">Explore the marketplace</a>
+            </div>
+            <p class="hero-copy">A dedicated app for dance families to discover outfits, list pieces they no longer need, and hire standout items for performances.</p>
         </div>
     </section>
 
@@ -191,7 +205,7 @@
                     <article class="feature-card">
                         <img src="{{ asset('landing/hire.png') }}" alt="Dancewear available to hire">
                         <h3>Hire for the moment</h3>
-                        <p>Book outfits for competitions, shows and exams with date ranges, deposits and unavailable dates handled in-app.</p>
+                        <p>Book outfits for competitions and shows with date ranges, deposits and unavailable dates handled in-app.</p>
                     </article>
                     <article class="feature-card">
                         <img src="{{ asset('landing/sell.png') }}" alt="Dance clothing listed for sale">
@@ -201,7 +215,7 @@
                     <article class="feature-card">
                         <img src="{{ asset('landing/payday.png') }}" alt="Secure marketplace payment">
                         <h3>Payments with structure</h3>
-                        <p>Stripe Connect supports platform fees, seller payouts and deposits for hire orders.</p>
+                        <p>Stripe Connect supports secure payments, seller payouts and deposits for hire orders.</p>
                     </article>
                 </div>
             </div>
@@ -259,7 +273,7 @@
                     <article class="class-panel">
                         <img src="{{ asset('landing/1.jpg') }}" alt="Ballet dancewear and costume">
                         <div class="class-panel-content">
-                            <h3>Ballet, tap and exam wear</h3>
+                            <h3>Ballet, tap and class wear</h3>
                             <p>Find the essentials families need again and again, from shoes and leotards to skirts and accessories.</p>
                             <a class="button button-primary" href="#download">Start browsing</a>
                         </div>
