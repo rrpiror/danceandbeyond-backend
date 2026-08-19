@@ -120,6 +120,7 @@ class ProductRepository
 
         $query = $query->withCount('reviews')
             ->withAvg('reviews', 'rating')
+            ->withSum('variants as total_stock', 'quantity')
             ->with('media', 'brand', 'hiringDetail')
             ->latest();
 
@@ -152,6 +153,7 @@ class ProductRepository
             ->whereHas('variants', function ($variantQuery) {
                 $variantQuery->where('quantity', '>', 0);
             })
+            ->withSum('variants as total_stock', 'quantity')
             ->with('media', 'brand', 'hiringDetail')
             ->latest()
             ->get();
