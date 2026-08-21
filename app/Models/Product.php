@@ -29,6 +29,7 @@ class Product extends Model implements HasMedia
         'is_featured' => 'boolean',
         'price' => 'float',
         'delivery_charge' => 'float',
+        'total_stock' => 'integer',
     ];
 
     public function fulfillmentOptions()
