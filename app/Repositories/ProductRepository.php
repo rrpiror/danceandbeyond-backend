@@ -126,6 +126,7 @@ class ProductRepository
 
         // Get paginated results
         $paginatedProducts = $query->paginate($perPage, ['*'], 'page', $page);
+        $paginatedProducts->getCollection()->transform(fn (Product $product) => $this->castProductTotals($product));
 
         return $paginatedProducts;
     }
@@ -156,6 +157,14 @@ class ProductRepository
             ->withSum('variants as total_stock', 'quantity')
             ->with('media', 'brand', 'hiringDetail')
             ->latest()
-            ->get();
+            ->get()
+            ->map(fn (Product $product) => $this->castProductTotals($product));
+    }
+
+    private function castProductTotals(Product $product): Product
+    {
+        $product->total_stock = (int) ($product->total_stock ?? 0);
+
+        return $product;
     }
 }
