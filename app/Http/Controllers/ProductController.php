@@ -18,7 +18,7 @@ class ProductController extends Controller
         'brand_id' => 'required|integer|exists:brands,id',
         'name' => 'required|string',
         'description' => 'required|string',
-        'price' => 'required|numeric|min:0',
+        'price' => 'required|numeric|min:0.20',
         'delivery_charge' => 'nullable|numeric|min:0',
         'type' => 'required|in:sale,hire',
         'fulfillment_option_ids' => 'required|array|min:1',
