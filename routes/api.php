@@ -8,6 +8,7 @@ use App\Http\Controllers\{
     OrderController,
     PaymentMethodController,
     ProductController,
+    MarketplaceFeeController,
     SizeController,
     UserController,
     StripeWebHookController,
@@ -42,6 +43,7 @@ Route::get('/fulfillment-options', [FulfillmentOptionController::class, 'index']
 Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
 Route::get('/shipping-service-providers', [ShippingServiceProviderController::class, 'index']);
 Route::get('/order-statuses', [OrderController::class, 'getAllOrderStatuses']);
+Route::get('/marketplace-fees', [MarketplaceFeeController::class, 'index']);
 
 
 // ============================================
