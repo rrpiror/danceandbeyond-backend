@@ -323,44 +323,41 @@ class UserService
                     : null;
 
                 if (! $existingAddress) {
-                    $existingAddress = $user->address()
-                        ->wherePivot('type', $type)
-                        ->where('house_number', $addressData['house_number'])
-                        ->where('street', $addressData['street'])
-                        ->where('city', $addressData['city'])
-                        ->where('postcode', $addressData['postcode'])
-                        ->where(function ($query) use ($addressData) {
-                            if ($addressData['building_name']) {
-                                $query->where('building_name', $addressData['building_name']);
-                            } else {
-                                $query->whereNull('building_name');
-                            }
-                        })
-                        ->where(function ($query) use ($addressData) {
-                            if ($addressData['town']) {
-                                $query->where('town', $addressData['town']);
-                            } else {
-                                $query->whereNull('town');
-                            }
-                        })
-                        ->first();
+                    $existingAddress = $user->address()->wherePivot('type', $type)->first();
                 }
 
                 if ($existingAddress) {
                     $existingAddress->fill($addressData)->save();
 
-                    $user->address()->updateExistingPivot($existingAddress->id, [
-                        'type' => $type,
+                    $savedAddressId = $existingAddress->id;
+
+                    $user->address()->syncWithoutDetaching([
+                        $savedAddressId => [
+                            'type' => $type,
+                        ],
                     ]);
                 } else {
                     $newAddress = $this->addressRepository->create($addressData);
+                    $savedAddressId = $newAddress->id;
 
                     $user->address()->syncWithoutDetaching([
-                        $newAddress->id => [
+                        $savedAddressId => [
                             'type' => $type,
                         ],
                     ]);
                 }
+
+                $user->address()
+                    ->wherePivot('type', $type)
+                    ->where('addresses.id', '!=', $savedAddressId)
+                    ->get()
+                    ->each(function ($duplicateAddress) use ($user) {
+                        $user->address()->detach($duplicateAddress->id);
+                    });
+
+                $user->address()->updateExistingPivot($savedAddressId, [
+                    'type' => $type,
+                ]);
             }
         }
 
