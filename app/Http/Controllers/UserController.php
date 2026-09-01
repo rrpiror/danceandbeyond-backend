@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 class UserController extends Controller
 {
     protected ValidationService $validationService;
+
     protected UserService $userService;
 
     public function __construct(ValidationService $validationService, UserService $userService)
@@ -23,13 +24,17 @@ class UserController extends Controller
      *     path="/api/login",
      *     summary="Login a user",
      *     tags={"Authentication"},
+     *
      *     @OA\RequestBody(
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="email", type="string"),
      *             @OA\Property(property="password", type="string")
      *         )
      *     ),
+     *
      *     @OA\Response(response=200, description="Successful operation"),
      *     @OA\Response(response=401, description="Unauthorized")
      * )
@@ -122,7 +127,7 @@ class UserController extends Controller
             $rules = [
                 'rating' => 'required|decimal:0,2',
                 'description' => 'required|string',
-                'seller_id' => 'required|exists:users,id'
+                'seller_id' => 'required|exists:users,id',
             ];
 
             $validation = $this->validationService->validate($request, $rules);
@@ -143,6 +148,7 @@ class UserController extends Controller
     {
         try {
             $reviews = $this->userService->getReviews($sellerId);
+
             return apiResponse(true, $reviews);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
@@ -153,6 +159,7 @@ class UserController extends Controller
     {
         try {
             $profile = $this->userService->getProfile();
+
             return apiResponse(true, $profile);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
@@ -164,7 +171,7 @@ class UserController extends Controller
         try {
             $rules = [
                 'name' => 'required',
-                'phone_number' => 'optional|string|max:20',
+                'phone_number' => 'nullable|string|max:20',
                 'type' => 'required|in:organisation,individual',
                 'address' => 'required',
                 'organisation' => 'required_if:type,organisation',
@@ -280,6 +287,7 @@ class UserController extends Controller
     {
         try {
             $user = $this->userService->deleteAccount();
+
             return apiResponse(true, 'Account deleted successfully');
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
@@ -290,6 +298,7 @@ class UserController extends Controller
     {
         try {
             $user = $this->userService->findById(auth()->user()->id);
+
             return apiResponse(true, $user);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
@@ -300,11 +309,13 @@ class UserController extends Controller
     {
         try {
             $user = $this->userService->findById($id);
+
             return apiResponse(true, $user);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
         }
     }
+
     public function forgotPassword(Request $request)
     {
         $request->validate([
@@ -355,7 +366,7 @@ class UserController extends Controller
             ->where('is_used', false)
             ->first();
 
-        if (!$otpRecord || !$otpRecord->isValid()) {
+        if (! $otpRecord || ! $otpRecord->isValid()) {
             return response()->json([
                 'error' => [
                     'code' => 'INVALID_OTP',
@@ -386,6 +397,7 @@ class UserController extends Controller
     {
         try {
             $exists = $this->userService->doesEmailExist($request->email);
+
             return apiResponse(true, $exists);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
@@ -396,6 +408,7 @@ class UserController extends Controller
     {
         try {
             $exists = $this->userService->doesPhoneNumberExist($request->phone_number);
+
             return apiResponse(true, $exists);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
@@ -407,6 +420,7 @@ class UserController extends Controller
         try {
             $userId = auth()->user()->id;
             $exists = $this->userService->doesPhoneNumberChangeExist($request->phone_number, $userId);
+
             return apiResponse(true, $exists);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
@@ -417,6 +431,7 @@ class UserController extends Controller
     {
         try {
             $exists = $this->userService->doesUsernameExist($request->username);
+
             return apiResponse(true, $exists);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);
@@ -428,6 +443,7 @@ class UserController extends Controller
         try {
             $userId = auth()->user()->id;
             $exists = $this->userService->doesUsernameChangeExist($request->username, $userId);
+
             return apiResponse(true, $exists);
         } catch (Exception $ex) {
             return apiResponse(false, $ex->getMessage(), 'Something went wrong', 1, 500);

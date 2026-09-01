@@ -4,27 +4,32 @@ namespace App\Services;
 
 use App\Mail\ForgotPasswordLink;
 use App\Repositories\AddressRepository;
+use App\Repositories\OrganisationRepository;
 use App\Repositories\UserAddressRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\UserReviewRepository;
-use App\Repositories\OrganisationRepository;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Stripe\Account;
 use Stripe\AccountLink;
 use Stripe\Customer;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Mail;
 
 class UserService
 {
     protected UserRepository $userRepository;
+
     protected OrganisationRepository $organisationRepository;
+
     protected UserAddressRepository $userAddressRepository;
+
     protected AddressRepository $addressRepository;
+
     protected UserReviewRepository $userReviewRepository;
+
     protected PaymentService $paymentService;
 
     public function __construct(UserRepository $userRepository, OrganisationRepository $organisationRepository, UserAddressRepository $userAddressRepository, AddressRepository $addressRepository, UserReviewRepository $userReviewRepository, PaymentService $paymentService)
@@ -51,7 +56,7 @@ class UserService
                 throw new Exception('Your account is blocked.', 403);
             }
 
-            if (!Auth::attempt($data)) {
+            if (! Auth::attempt($data)) {
                 throw new Exception('Wrong Credentials.', 404);
             }
 
@@ -59,6 +64,7 @@ class UserService
             if ($user->type == 'organisation') {
                 $user->load('organisation');
             }
+
             return ['user' => $user, 'token' => $token->plainTextToken];
         } else {
             throw new Exception('Invalid Credentials.', 404);
@@ -128,7 +134,7 @@ class UserService
             $user = Auth::user();
             $user = $this->userRepository->findById($user->id);
 
-            if (!$user) {
+            if (! $user) {
                 throw new Exception('User not found', 404);
             }
 
@@ -167,7 +173,7 @@ class UserService
             $accountLink = AccountLink::create([
                 'account' => $account->id,
                 'refresh_url' => env('REFRESH_URL'),
-                'return_url' => env("RETURN_URL"),
+                'return_url' => env('RETURN_URL'),
                 'type' => 'account_onboarding',
                 'collection_options' => [
                     'fields' => 'currently_due',
@@ -185,7 +191,7 @@ class UserService
         $user = Auth::user();
         $user = $this->userRepository->findById($user->id);
 
-        if (!$user || !$user->stripe_seller_id) {
+        if (! $user || ! $user->stripe_seller_id) {
             return [
                 'connected' => false,
                 'account_id' => null,
@@ -216,7 +222,7 @@ class UserService
     {
         $user = $this->userRepository->findById(Auth::user()->id);
 
-        if (!Hash::check($data['old_password'], $user->password)) {
+        if (! Hash::check($data['old_password'], $user->password)) {
             throw new Exception('Old password is incorrect.', 400);
         }
 
@@ -230,13 +236,14 @@ class UserService
     {
         $user = $this->userRepository->findById(Auth::user()->id);
         $user->delete();
+
         return true;
     }
 
     public function sendForgotPasswordLink(string $email)
     {
         $user = $this->userRepository->findByEmail($email);
-        if (!$user) {
+        if (! $user) {
             throw new Exception('User not found.', 404);
         }
 
@@ -253,7 +260,7 @@ class UserService
     public function validateResetPasswordToken(string $token)
     {
         $user = $this->userRepository->findByResetPasswordToken($token);
-        if (!$user) {
+        if (! $user) {
             throw new Exception('Invalid token.', 400);
         }
 
@@ -268,7 +275,7 @@ class UserService
     {
 
         $user = $this->userRepository->findByResetPasswordToken($token);
-        if (!$user) {
+        if (! $user) {
             throw new Exception('Invalid token.', 400);
         }
 
@@ -300,7 +307,32 @@ class UserService
 
         if (isset($data['address']) && is_array($data['address'])) {
             foreach ($data['address'] as $address) {
-                $this->addressRepository->findById($address['id'])->fill($address)->save();
+                $addressData = [
+                    'house_number' => $address['house_number'],
+                    'building_name' => $address['building_name'] ?? null,
+                    'street' => $address['street'],
+                    'town' => $address['town'] ?? null,
+                    'city' => $address['city'],
+                    'postcode' => $address['postcode'],
+                ];
+
+                $type = $address['pivot']['type'] ?? 'shipping';
+                $addressId = $address['id'] ?? null;
+                $existingAddress = $addressId ? $this->addressRepository->findById($addressId) : null;
+
+                if ($existingAddress) {
+                    $existingAddress->fill($addressData)->save();
+
+                    $user->address()->updateExistingPivot($existingAddress->id, [
+                        'type' => $type,
+                    ]);
+                } else {
+                    $newAddress = $this->addressRepository->create($addressData);
+
+                    $user->address()->attach($newAddress->id, [
+                        'type' => $type,
+                    ]);
+                }
             }
         }
 
@@ -314,6 +346,7 @@ class UserService
     public function addReview(array $data)
     {
         $data['user_id'] = Auth::user()->id;
+
         return $this->userReviewRepository->create($data);
     }
 
@@ -326,7 +359,7 @@ class UserService
         return [
             'reviews' => $reviews,
             'total_reviews' => $totalReviews,
-            'average_rating' => $averageRating
+            'average_rating' => $averageRating,
         ];
     }
 
@@ -354,24 +387,28 @@ class UserService
     public function doesPhoneNumberExist(string $phoneNumber): bool
     {
         $user = $this->userRepository->findByPhoneNumber($phoneNumber);
+
         return $user !== null;
     }
 
     public function doesPhoneNumberChangeExist(string $phoneNumber, int $userId): bool
     {
         $user = $this->userRepository->findByPhoneNumber($phoneNumber);
+
         return $user !== null && $user->id !== $userId;
     }
 
     public function doesUsernameExist(string $username): bool
     {
         $user = $this->userRepository->findByUsername($username);
+
         return $user !== null;
     }
 
     public function doesUsernameChangeExist(string $username, int $userId): bool
     {
         $user = $this->userRepository->findByUsername($username);
+
         return $user !== null && $user->id !== $userId;
     }
 }
