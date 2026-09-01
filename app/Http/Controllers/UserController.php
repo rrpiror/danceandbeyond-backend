@@ -173,7 +173,7 @@ class UserController extends Controller
                 'name' => 'required',
                 'phone_number' => 'nullable|string|max:20',
                 'type' => 'required|in:organisation,individual',
-                'address' => 'required',
+                'address' => 'sometimes|array',
                 'organisation' => 'required_if:type,organisation',
                 'organisation.name' => 'required_if:type,organisation',
                 'organisation.website' => 'required_if:type,organisation|url',
