@@ -318,7 +318,33 @@ class UserService
 
                 $type = $address['pivot']['type'] ?? 'shipping';
                 $addressId = $address['id'] ?? null;
-                $existingAddress = $addressId ? $this->addressRepository->findById($addressId) : null;
+                $existingAddress = $addressId && $addressId > 0
+                    ? $user->address()->where('addresses.id', $addressId)->first()
+                    : null;
+
+                if (! $existingAddress) {
+                    $existingAddress = $user->address()
+                        ->wherePivot('type', $type)
+                        ->where('house_number', $addressData['house_number'])
+                        ->where('street', $addressData['street'])
+                        ->where('city', $addressData['city'])
+                        ->where('postcode', $addressData['postcode'])
+                        ->where(function ($query) use ($addressData) {
+                            if ($addressData['building_name']) {
+                                $query->where('building_name', $addressData['building_name']);
+                            } else {
+                                $query->whereNull('building_name');
+                            }
+                        })
+                        ->where(function ($query) use ($addressData) {
+                            if ($addressData['town']) {
+                                $query->where('town', $addressData['town']);
+                            } else {
+                                $query->whereNull('town');
+                            }
+                        })
+                        ->first();
+                }
 
                 if ($existingAddress) {
                     $existingAddress->fill($addressData)->save();
@@ -329,8 +355,10 @@ class UserService
                 } else {
                     $newAddress = $this->addressRepository->create($addressData);
 
-                    $user->address()->attach($newAddress->id, [
-                        'type' => $type,
+                    $user->address()->syncWithoutDetaching([
+                        $newAddress->id => [
+                            'type' => $type,
+                        ],
                     ]);
                 }
             }
