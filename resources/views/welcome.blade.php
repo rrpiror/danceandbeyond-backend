@@ -44,9 +44,19 @@
         top: 54px;
         left: clamp(24px, 5vw, 72px);
         z-index: 5;
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
         font-size: clamp(32px, 4vw, 46px);
         font-weight: 900;
         letter-spacing: -0.04em;
+    }
+
+    .brand img {
+        width: clamp(38px, 5vw, 54px);
+        height: clamp(38px, 5vw, 54px);
+        border-radius: 14px;
+        box-shadow: 0 14px 28px rgba(23, 32, 24, .12);
     }
 
     .leaf {
@@ -346,7 +356,10 @@
 @section('content')
 <main class="page">
     <section class="hero" aria-labelledby="home-title">
-        <a class="brand" href="/" aria-label="Vestu home">vestu.</a>
+        <a class="brand" href="/" aria-label="Vestu home">
+            <img src="{{ asset('landing/vestu-logo.png') }}" alt="" aria-hidden="true">
+            <span>vestu.</span>
+        </a>
 
         <div class="leaf" aria-hidden="true"></div>
 
