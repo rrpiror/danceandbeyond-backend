@@ -7,7 +7,7 @@
     <title>@yield('title', config('app.name'))</title>
     <meta name="description" content="@yield('meta_description', '')">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#409349">
 
     {{-- Favicons --}}
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicon/apple-touch-icon.png') }}">
