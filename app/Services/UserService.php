@@ -87,9 +87,10 @@ class UserService
 
             $user = $this->userRepository->create($data);
 
-            $address = $this->addressRepository->create($data['address']);
-
-            $user->address()->attach($address->id, ['type' => 'shipping']);
+            if (!empty($data['address'])) {
+                $address = $this->addressRepository->create($data['address']);
+                $user->address()->attach($address->id, ['type' => 'shipping']);
+            }
 
             if ($data['type'] == 'organisation') {
                 $data['organisation']['user_id'] = $user->id;
